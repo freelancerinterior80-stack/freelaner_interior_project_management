@@ -1,0 +1,26 @@
+
+> freelaner-interior-project-management@0.1.0 dev
+> next dev --turbopack
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.56.1:3000
+- Environments: .env
+✓ Ready in 594ms
+
+ GET /login 200 in 1267ms (next.js: 220ms, proxy.ts: 278ms, application-code: 769ms)
+ GET /verify?email=freelancerinterior80%40gmail.com 200 in 1299ms (next.js: 632ms, proxy.ts: 278ms, application-code: 389ms)
+ GET /verify?email=freelancerinterior80%40gmail.com 200 in 245ms (next.js: 37ms, proxy.ts: 21ms, application-code: 187ms)
+ HEAD /login 200 in 47ms (next.js: 3ms, proxy.ts: 6ms, application-code: 38ms)
+ GET /login 200 in 52ms (next.js: 4ms, proxy.ts: 5ms, application-code: 44ms)
+ HEAD /login 200 in 59ms (next.js: 5ms, proxy.ts: 7ms, application-code: 47ms)
+✓ Compiled in 963ms
+ GET /verify?email=freelancerinterior80%40gmail.com 200 in 449ms (next.js: 95ms, proxy.ts: 98ms, application-code: 257ms)
+ GET /login 200 in 446ms (next.js: 198ms, proxy.ts: 106ms, application-code: 142ms)
+ GET /verify?email=freelancerinterior80%40gmail.com 200 in 212ms (next.js: 16ms, proxy.ts: 17ms, application-code: 178ms)
+ GET /login 200 in 231ms (next.js: 57ms, proxy.ts: 17ms, application-code: 157ms)
+ GET /verify?email=freelancerinterior80%40gmail.com 200 in 177ms (next.js: 17ms, proxy.ts: 29ms, application-code: 130ms)
+ GET /verify?email=freelancerinterior80%40gmail.com 200 in 171ms (next.js: 34ms, proxy.ts: 13ms, application-code: 125ms)
+ GET /verify?email=freelancerinterior80%40gmail.com 200 in 166ms (next.js: 32ms, proxy.ts: 33ms, application-code: 101ms)
+ GET /verify?email=freelancerinterior80%40gmail.com 200 in 168ms (next.js: 60ms, proxy.ts: 35ms, application-code: 73ms)
+ GET /login 200 in 48ms (next.js: 8ms, proxy.ts: 9ms, application-code: 31ms)

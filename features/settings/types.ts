@@ -1,0 +1,22 @@
+export type AppSettings = {
+  companyName: string;
+  companyPhone?: string | null;
+  companyEmail?: string | null;
+  companyAddress?: string | null;
+  logoPath?: string | null;
+  logoUrl?: string | null;
+  signaturePath?: string | null;
+  signatureUrl?: string | null;
+  vatNumber?: string | null;
+  vatRate: number;
+  bankName?: string | null;
+  bankAccountName?: string | null;
+  bankIban?: string | null;
+  bankSwift?: string | null;
+  defaultTermsEn?: string | null;
+  defaultTermsAr?: string | null;
+  invoicePrefix: string;
+  quotationPrefix: string;
+  currency: string;
+  preferredLanguage: "en" | "ar";
+};
