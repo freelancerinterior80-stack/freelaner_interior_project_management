@@ -90,9 +90,40 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+OWNER_AUTH_EMAIL=
+OWNER_AUTH_PASSWORD=
+OWNER_AUTH_NAME=
+OWNER_AUTH_ID=
+OWNER_AUTH_SECRET=
 ```
 
 When these variables are missing, the app runs in demo mode with sample projects so the UI can be reviewed immediately.
+
+## Vercel Deployment
+
+Use the default Next.js settings Vercel detects:
+
+```text
+Build Command: npm run build
+Install Command: npm install
+Output Directory: .next
+```
+
+Set these environment variables in Vercel Project Settings:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+NEXT_PUBLIC_APP_URL=https://your-vercel-domain.vercel.app
+OWNER_AUTH_EMAIL=owner@company.com
+OWNER_AUTH_PASSWORD=your-strong-password
+OWNER_AUTH_NAME=Owner
+OWNER_AUTH_ID=00000000-0000-0000-0000-000000000001
+OWNER_AUTH_SECRET=your-long-random-secret
+```
+
+`NEXT_PUBLIC_APP_URL=http://localhost:3000` is only for local development. After adding your custom domain in Vercel, update `NEXT_PUBLIC_APP_URL` to that custom domain, for example `https://your-domain.com`, then redeploy.
 
 ## Verification
 

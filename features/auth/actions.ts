@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { isOwnerAuthConfigured, setOwnerSessionCookie, verifyOwnerCredentials } from "@/lib/auth/owner-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -56,7 +57,7 @@ export async function signInWithEmail(_: AuthActionState, formData: FormData): P
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data.email,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/dashboard`
+      emailRedirectTo: `${await getAppUrl()}/dashboard`
     }
   });
 
@@ -128,4 +129,27 @@ export async function verifyOtp(_: AuthActionState, formData: FormData): Promise
   }
 
   redirect("/dashboard");
+}
+
+async function getAppUrl() {
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const isLocalUrl = configuredUrl?.includes("localhost") || configuredUrl?.includes("127.0.0.1");
+
+  if (configuredUrl && !(process.env.NODE_ENV === "production" && isLocalUrl)) {
+    return configuredUrl.replace(/\/$/, "");
+  }
+
+  const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
+  if (vercelUrl) {
+    return `https://${vercelUrl}`.replace(/\/$/, "");
+  }
+
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  if (host) {
+    const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+    return `${protocol}://${host}`.replace(/\/$/, "");
+  }
+
+  return "http://localhost:3000";
 }
