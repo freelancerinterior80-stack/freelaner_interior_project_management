@@ -130,3 +130,9 @@
  GET /materials 200 in 520ms (next.js: 17ms, proxy.ts: 18ms, application-code: 485ms)
  GET /materials 200 in 511ms (next.js: 57ms, proxy.ts: 10ms, application-code: 444ms)
  GET /materials 200 in 1282ms (next.js: 77ms, proxy.ts: 7ms, application-code: 1198ms)
+  Reload env: .env
+  Reload env: .env
+ GET /verify?email=freelancerinterior80%40gmail.com 200 in 2.1s (next.js: 516ms, proxy.ts: 470ms, application-code: 1127ms)
+ GET /verify?email=freelancerinterior80%40gmail.com 200 in 273ms (next.js: 11ms, proxy.ts: 146ms, application-code: 116ms)
+ GET /materials 200 in 1002ms (next.js: 37ms, proxy.ts: 147ms, application-code: 818ms)
+ GET /materials 200 in 2.9s (next.js: 1318ms, proxy.ts: 439ms, application-code: 1174ms)

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { BarChart3, Boxes, Settings, ImagePlus, Truck } from "lucide-react";
+import { BarChart3, Boxes, ImagePlus, LogOut, Settings, Truck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { signOut } from "@/features/auth/actions";
 
 const items = [
   { href: "/materials", label: "Materials", icon: Boxes },
@@ -29,6 +30,16 @@ export default function MorePage() {
             </Card>
           </Link>
         ))}
+        <form action={signOut} className="contents">
+          <button type="submit" className="text-left">
+            <Card className="border-0 shadow-soft hover:border-destructive/30 transition-colors">
+              <CardContent className="flex h-28 flex-col justify-between p-4">
+                <LogOut className="h-6 w-6 text-destructive" />
+                <span className="text-sm font-medium text-destructive">Log out</span>
+              </CardContent>
+            </Card>
+          </button>
+        </form>
       </div>
     </div>
   );

@@ -2,8 +2,9 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 import type { AppUser } from "@/lib/auth/guards";
-import { supabaseServiceRoleKey } from "@/lib/supabase/config";
+import { supabaseUrl, supabaseServiceRoleKey } from "@/lib/supabase/config";
 
 const OWNER_SESSION_COOKIE = "freelaner_owner_session";
 const DEFAULT_OWNER_ID = "00000000-0000-0000-0000-000000000001";
@@ -42,10 +43,13 @@ export async function setOwnerSessionCookie() {
     return;
   }
 
+  const fullName = process.env.OWNER_AUTH_NAME ?? "Owner";
+  const ownerId = await provisionOwnerInSupabase(ownerEmail, fullName);
+
   const payload: OwnerSessionPayload = {
-    id: getOwnerId(),
+    id: ownerId,
     email: ownerEmail,
-    fullName: process.env.OWNER_AUTH_NAME ?? "Owner",
+    fullName,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30
   };
 
@@ -57,6 +61,49 @@ export async function setOwnerSessionCookie() {
     maxAge: 60 * 60 * 24 * 30,
     path: "/"
   });
+}
+
+// Ensures the owner exists in auth.users + profiles so FK constraints are satisfied.
+// Uses the admin API so no Supabase session is needed.
+async function provisionOwnerInSupabase(email: string, fullName: string): Promise<string> {
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
+    return getOwnerId();
+  }
+
+  const admin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+
+  // Find existing user by email
+  const { data: list } = await admin.auth.admin.listUsers({ perPage: 1000 });
+  const existing = list?.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+
+  let userId: string;
+
+  if (existing) {
+    userId = existing.id;
+  } else {
+    // Create a real Supabase auth user for the owner
+    const { data: created, error } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: { full_name: fullName }
+    });
+
+    if (error || !created?.user) {
+      return getOwnerId();
+    }
+
+    userId = created.user.id;
+  }
+
+  // Ensure profile row exists
+  await admin.from("profiles").upsert(
+    { id: userId, full_name: fullName },
+    { onConflict: "id", ignoreDuplicates: true }
+  );
+
+  return userId;
 }
 
 export async function getOwnerSessionUser(): Promise<AppUser | null> {

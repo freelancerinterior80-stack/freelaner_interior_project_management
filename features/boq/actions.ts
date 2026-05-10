@@ -47,6 +47,7 @@ export async function createBoq(_: BoqActionState, formData: FormData): Promise<
 
   const user = await requireUser();
   const supabase = await createSupabaseServerClient();
+
   const { data, error } = await supabase
     .from("boqs")
     .insert({

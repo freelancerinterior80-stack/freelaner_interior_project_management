@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { z } from "zod";
 import { isOwnerAuthConfigured, setOwnerSessionCookie, verifyOwnerCredentials } from "@/lib/auth/owner-auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -93,6 +93,18 @@ export async function signInWithPhone(_: AuthActionState, formData: FormData): P
   redirect(`/verify?phone=${encodeURIComponent(parsed.data.phone)}`);
 }
 
+export async function signOut(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete("freelaner_owner_session");
+
+  if (isSupabaseConfigured()) {
+    const supabase = await createSupabaseServerClient();
+    await supabase.auth.signOut();
+  }
+
+  redirect("/login");
+}
+
 export async function verifyOtp(_: AuthActionState, formData: FormData): Promise<AuthActionState> {
   const parsed = verifySchema.safeParse({
     email: formData.get("email") ?? "",
@@ -126,6 +138,12 @@ export async function verifyOtp(_: AuthActionState, formData: FormData): Promise
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Ensure a profiles row exists so FK constraints on all other tables are satisfied.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
   }
 
   redirect("/dashboard");
