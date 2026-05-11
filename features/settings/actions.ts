@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/guards";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -137,6 +137,8 @@ async function doSaveSettings(formData: FormData): Promise<SettingsActionState> 
   }
 
   // If there was a file upload warning, return it instead of redirecting so user can see it
+  revalidateTag("app-settings", {});
+
   if (uploadWarning) {
     revalidatePath("/settings");
     return { ok: true, warning: uploadWarning };
