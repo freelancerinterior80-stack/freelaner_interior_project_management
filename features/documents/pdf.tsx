@@ -4,9 +4,16 @@ import type { Boq } from "@/features/boq/types";
 import type { DocumentItem, Invoice, Quotation } from "@/features/documents/types";
 import type { AppSettings } from "@/features/settings/types";
 
+const ARABIC_FONT_SRC = path.join(process.cwd(), "public", "fonts", "NotoSansArabic-Regular.ttf");
+
 Font.register({
   family: "NotoSansArabic",
-  src: path.join(process.cwd(), "public", "fonts", "NotoSansArabic-Regular.ttf")
+  fonts: [
+    { src: ARABIC_FONT_SRC, fontWeight: "normal" },
+    { src: ARABIC_FONT_SRC, fontWeight: "bold" },
+    { src: ARABIC_FONT_SRC, fontWeight: 700 },
+    { src: ARABIC_FONT_SRC, fontWeight: 400 }
+  ]
 });
 
 const BRAND = "#6f4926";
@@ -486,8 +493,8 @@ function Header({
         {settings?.companyAddress ? <Text style={styles.companyDetail}>{settings.companyAddress}</Text> : null}
         {settings?.companyPhone ? <Text style={styles.companyDetail}>{settings.companyPhone}</Text> : null}
         {settings?.companyEmail ? <Text style={styles.companyDetail}>{settings.companyEmail}</Text> : null}
-        {settings?.companyWebsite ? <Text style={styles.companyDetail}>🌐 {settings.companyWebsite}</Text> : null}
-        {settings?.companyInstagram ? <Text style={styles.companyDetail}>@ {settings.companyInstagram}</Text> : null}
+        {settings?.companyWebsite ? <Text style={styles.companyDetail}>{settings.companyWebsite}</Text> : null}
+        {settings?.companyInstagram ? <Text style={styles.companyDetail}>{settings.companyInstagram}</Text> : null}
         {settings?.vatNumber ? <Text style={styles.companyDetail}>VAT: {settings.vatNumber}</Text> : null}
       </View>
 
