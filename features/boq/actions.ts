@@ -131,6 +131,89 @@ export async function addBoqItem(_: BoqActionState, formData: FormData): Promise
   redirect(`/boq/${parsed.data.boqId}`);
 }
 
+const updateItemSchema = z.object({
+  itemId: z.string().min(1),
+  boqId: z.string().min(1),
+  description: z.string().min(2, "Description is required."),
+  quantity: z.coerce.number().min(0, "Quantity cannot be negative."),
+  unit: z.enum(["m2", "ls", "mtr", "ps", "units"]),
+  unitRate: z.coerce.number().min(0, "Rate cannot be negative."),
+  notes: z.string().optional()
+});
+
+export async function updateBoqItem(_: BoqActionState, formData: FormData): Promise<BoqActionState> {
+  const parsed = updateItemSchema.safeParse({
+    itemId: formData.get("itemId"),
+    boqId: formData.get("boqId"),
+    description: formData.get("description"),
+    quantity: formData.get("quantity"),
+    unit: formData.get("unit"),
+    unitRate: formData.get("unitRate"),
+    notes: formData.get("notes") || undefined
+  });
+
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Check item details." };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { ok: true };
+  }
+
+  const user = await requireUser();
+  const supabase = await createSupabaseServerClient();
+
+  const { error } = await supabase
+    .from("boq_items")
+    .update({
+      description: parsed.data.description,
+      quantity: parsed.data.quantity,
+      unit: parsed.data.unit,
+      unit_rate: parsed.data.unitRate,
+      notes: parsed.data.notes || null
+    })
+    .eq("id", parsed.data.itemId)
+    .eq("owner_id", user.id);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/boq");
+  revalidatePath(`/boq/${parsed.data.boqId}`);
+  return { ok: true };
+}
+
+export async function deleteBoqItem(_: BoqActionState, formData: FormData): Promise<BoqActionState> {
+  const itemId = String(formData.get("itemId") ?? "");
+  const boqId = String(formData.get("boqId") ?? "");
+
+  if (!itemId || !boqId) {
+    return { ok: false, error: "Missing item or BOQ ID." };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { ok: true };
+  }
+
+  const user = await requireUser();
+  const supabase = await createSupabaseServerClient();
+
+  const { error } = await supabase
+    .from("boq_items")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", itemId)
+    .eq("owner_id", user.id);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/boq");
+  revalidatePath(`/boq/${boqId}`);
+  return { ok: true };
+}
+
 export async function importBoqItems(_: BoqActionState, formData: FormData): Promise<BoqActionState> {
   const boqId = String(formData.get("boqId") ?? "");
   const file = formData.get("file");

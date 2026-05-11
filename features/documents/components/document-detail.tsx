@@ -5,7 +5,7 @@ import { createInvoiceFromQuotation } from "@/features/documents/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatMoney } from "@/lib/utils";
+import { formatDate, formatMoney } from "@/lib/utils";
 import type { Invoice, Quotation } from "@/features/documents/types";
 
 type Props =
@@ -32,7 +32,7 @@ export function DocumentDetail(props: Props) {
           <h1 className="text-2xl font-semibold text-charcoal-900">{number}</h1>
           {document.clientName ? <p className="mt-1 text-sm text-muted-foreground">{document.clientName}</p> : null}
         </div>
-        <Badge variant="secondary">{document.status.replace("_", " ")}</Badge>
+        <Badge variant={statusVariant(document.status)}>{document.status.replace("_", " ")}</Badge>
       </div>
 
       <Card className="border-0 shadow-soft">
@@ -70,6 +70,18 @@ export function DocumentDetail(props: Props) {
               <input type="hidden" name="quotationId" value={document.id} />
               <Button className="w-full">Convert to invoice</Button>
             </form>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card className="border-0 shadow-soft">
+        <CardContent className="space-y-2 p-4 text-sm">
+          <Row label="Date" value={formatDate(document.issueDate)} />
+          {kind === "quotation" && document.validUntil ? (
+            <Row label="Valid until" value={formatDate(document.validUntil)} />
+          ) : null}
+          {kind === "invoice" && document.dueDate ? (
+            <Row label="Due date" value={formatDate(document.dueDate)} />
           ) : null}
         </CardContent>
       </Card>
@@ -114,18 +126,31 @@ function Totals({ document }: { document: Quotation | Invoice }) {
   return (
     <div className="space-y-2 rounded-md bg-secondary p-3 text-sm">
       <Row label="Subtotal" value={formatMoney(document.subtotal)} />
-      <Row label="Discount" value={formatMoney(document.discountAmount)} />
-      <Row label={`VAT ${Math.round(document.vatRate * 100)}%`} value={formatMoney(document.vatAmount)} />
-      {"balanceDue" in document ? <Row label="Balance due" value={formatMoney(document.balanceDue)} /> : null}
+      {document.discountAmount > 0 ? (
+        <Row label="Discount" value={`- ${formatMoney(document.discountAmount)}`} />
+      ) : null}
+      {"balanceDue" in document && document.paidAmount > 0 ? (
+        <Row label="Paid" value={formatMoney(document.paidAmount)} />
+      ) : null}
+      {"balanceDue" in document ? (
+        <Row label="Balance due" value={formatMoney(document.balanceDue)} bold />
+      ) : null}
     </div>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-charcoal-900">{value}</span>
+      <span className={bold ? "font-semibold text-charcoal-900" : "font-medium text-charcoal-900"}>{value}</span>
     </div>
   );
+}
+
+function statusVariant(status: string): "success" | "warning" | "secondary" | "outline" {
+  if (["accepted", "paid"].includes(status)) return "success";
+  if (["rejected", "cancelled", "overdue"].includes(status)) return "warning";
+  if (["issued", "sent", "part_paid"].includes(status)) return "outline";
+  return "secondary";
 }

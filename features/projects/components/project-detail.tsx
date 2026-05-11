@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { Camera, ClipboardList, FileText, Receipt, WalletCards } from "lucide-react";
+import { EditProjectSheet } from "@/features/projects/components/edit-project-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,9 +25,12 @@ export function ProjectDetail({ project }: { project: Project }) {
           <p className="text-sm font-medium text-wood-700">{project.clientName}</p>
           <h1 className="text-2xl font-semibold text-charcoal-900">{project.name}</h1>
         </div>
-        <Badge variant={project.status === "active" ? "success" : "secondary"}>
-          {project.status.replace("_", " ")}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={project.status === "active" ? "success" : "secondary"}>
+            {project.status.replace("_", " ")}
+          </Badge>
+          <EditProjectSheet project={project} />
+        </div>
       </div>
 
       <Card className="border-0 shadow-soft">

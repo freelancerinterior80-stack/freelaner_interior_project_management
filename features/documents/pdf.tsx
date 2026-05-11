@@ -1,3 +1,4 @@
+import path from "path";
 import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Boq } from "@/features/boq/types";
 import type { DocumentItem, Invoice, Quotation } from "@/features/documents/types";
@@ -5,7 +6,7 @@ import type { AppSettings } from "@/features/settings/types";
 
 Font.register({
   family: "NotoSansArabic",
-  src: "/fonts/NotoSansArabic-Regular.ttf"
+  src: path.join(process.cwd(), "public", "fonts", "NotoSansArabic-Regular.ttf")
 });
 
 const BRAND = "#6f4926";
@@ -363,9 +364,6 @@ export function QuotationPdf({
   if (quotation.discountAmount > 0) {
     totalsRows.push([t("discount", language), `- ${money(quotation.discountAmount, cur)}`]);
   }
-  if (quotation.vatRate > 0) {
-    totalsRows.push([`${t("vat", language)} ${Math.round(quotation.vatRate * 100)}%`, money(quotation.vatAmount, cur)]);
-  }
 
   return (
     <Document>
@@ -415,9 +413,6 @@ export function InvoicePdf({
   ];
   if (invoice.discountAmount > 0) {
     totalsRows.push([t("discount", language), `- ${money(invoice.discountAmount, cur)}`]);
-  }
-  if (invoice.vatRate > 0) {
-    totalsRows.push([`${t("vat", language)} ${Math.round(invoice.vatRate * 100)}%`, money(invoice.vatAmount, cur)]);
   }
   if (invoice.paidAmount > 0) {
     totalsRows.push([t("paid", language), money(invoice.paidAmount, cur)]);

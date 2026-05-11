@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Download, FileSpreadsheet, FileText, MessageCircle, ReceiptText } from "lucide-react";
 import { AddBoqItemForm } from "@/features/boq/components/add-boq-item-form";
+import { EditBoqItemSheet } from "@/features/boq/components/edit-boq-item-sheet";
 import { ImportBoqItemsForm } from "@/features/boq/components/import-boq-items-form";
 import { CreateDocumentButtons } from "@/features/documents/components/create-document-buttons";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +70,7 @@ export function BoqDetail({ boq }: { boq: Boq }) {
               </div>
               <div className="space-y-3">
                 {category.items.map((item) => (
-                  <BoqItemCard key={item.id} item={item} />
+                  <BoqItemCard key={item.id} item={item} boqId={boq.id} />
                 ))}
               </div>
             </CardContent>
@@ -85,7 +86,7 @@ export function BoqDetail({ boq }: { boq: Boq }) {
               </div>
               <div className="space-y-3">
                 {boq.ungroupedItems.map((item) => (
-                  <BoqItemCard key={item.id} item={item} />
+                  <BoqItemCard key={item.id} item={item} boqId={boq.id} />
                 ))}
               </div>
             </CardContent>
@@ -99,17 +100,20 @@ export function BoqDetail({ boq }: { boq: Boq }) {
   );
 }
 
-function BoqItemCard({ item }: { item: BoqItem }) {
+function BoqItemCard({ item, boqId }: { item: BoqItem; boqId: string }) {
   return (
     <div className="rounded-md bg-secondary p-3">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="font-medium text-charcoal-900">{item.description}</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {item.quantity} {item.unit.toUpperCase()} x {formatMoney(item.unitRate)}
           </p>
         </div>
-        <p className="shrink-0 text-sm font-semibold text-charcoal-900">{formatMoney(item.total)}</p>
+        <div className="flex shrink-0 items-center gap-2">
+          <p className="text-sm font-semibold text-charcoal-900">{formatMoney(item.total)}</p>
+          <EditBoqItemSheet item={item} boqId={boqId} />
+        </div>
       </div>
       {item.notes ? <p className="mt-2 text-xs text-muted-foreground">{item.notes}</p> : null}
     </div>
