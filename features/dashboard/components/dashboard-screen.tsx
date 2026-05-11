@@ -20,8 +20,8 @@ export function DashboardScreen({ data }: { data: DashboardData }) {
   return (
     <div className="space-y-5">
       <div>
-        <p className="text-sm font-medium text-wood-700">Today</p>
-        <h1 className="text-2xl font-semibold text-charcoal-900">Owner dashboard</h1>
+        <p className="text-sm font-medium text-wood-700">Welcome back</p>
+        <h1 className="text-2xl font-semibold text-charcoal-900">Basi</h1>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
