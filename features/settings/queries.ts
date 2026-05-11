@@ -9,12 +9,16 @@ type SettingsRow = {
   company_phone: string | null;
   company_email: string | null;
   company_address: string | null;
+  company_website: string | null;
+  company_instagram: string | null;
+  authorized_signer_name: string | null;
   logo_path: string | null;
   signature_path: string | null;
   vat_number: string | null;
   vat_rate: number | string;
   bank_name: string | null;
   bank_account_name: string | null;
+  bank_account_number: string | null;
   bank_iban: string | null;
   bank_swift: string | null;
   default_terms_en: string | null;
@@ -35,7 +39,7 @@ export async function getSettings(): Promise<AppSettings> {
     supabase
       .from("settings")
       .select(
-        "company_name,company_phone,company_email,company_address,logo_path,signature_path,vat_number,vat_rate,bank_name,bank_account_name,bank_iban,bank_swift,default_terms_en,default_terms_ar,invoice_prefix,quotation_prefix,currency"
+        "company_name,company_phone,company_email,company_address,company_website,company_instagram,authorized_signer_name,logo_path,signature_path,vat_number,vat_rate,bank_name,bank_account_name,bank_account_number,bank_iban,bank_swift,default_terms_en,default_terms_ar,invoice_prefix,quotation_prefix,currency"
       )
       .eq("owner_id", user.id)
       .is("deleted_at", null)
@@ -62,6 +66,9 @@ async function mapSettings(row: SettingsRow, preferredLanguage: "en" | "ar"): Pr
     companyPhone: row.company_phone,
     companyEmail: row.company_email,
     companyAddress: row.company_address,
+    companyWebsite: row.company_website,
+    companyInstagram: row.company_instagram,
+    authorizedSignerName: row.authorized_signer_name,
     logoPath: row.logo_path,
     logoUrl: row.logo_path ? await getSignedUrl(row.logo_path) : null,
     signaturePath: row.signature_path,
@@ -70,6 +77,7 @@ async function mapSettings(row: SettingsRow, preferredLanguage: "en" | "ar"): Pr
     vatRate: Number(row.vat_rate),
     bankName: row.bank_name,
     bankAccountName: row.bank_account_name,
+    bankAccountNumber: row.bank_account_number,
     bankIban: row.bank_iban,
     bankSwift: row.bank_swift,
     defaultTermsEn: row.default_terms_en,

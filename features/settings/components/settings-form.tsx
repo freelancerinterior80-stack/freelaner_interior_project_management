@@ -1,8 +1,9 @@
 "use client";
 
 import type { InputHTMLAttributes } from "react";
-import { useActionState } from "react";
-import { Building2, CreditCard, FileBadge, Languages, Save, Upload } from "lucide-react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
+import { Building2, CreditCard, FileBadge, Globe, Languages, PenLine, Save, Trash2, Upload } from "lucide-react";
+import SignaturePad from "signature_pad";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,15 +39,31 @@ export function SettingsForm({ settings }: { settings: AppSettings }) {
             <textarea
               id="companyAddress"
               name="companyAddress"
-              rows={3}
+              rows={2}
               defaultValue={settings.companyAddress ?? ""}
               className="w-full rounded-md border border-input bg-card px-3 py-3 text-base"
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <FileUpload id="logo" label="Logo" currentLabel={settings.logoPath ? "Current logo saved" : undefined} />
-            <FileUpload id="signature" label="Signature" currentLabel={settings.signaturePath ? "Current signature saved" : undefined} />
+            <div className="space-y-2">
+              <Label htmlFor="companyWebsite" className="flex items-center gap-1.5">
+                <Globe className="h-3.5 w-3.5 text-wood-700" /> Website
+              </Label>
+              <Input id="companyWebsite" name="companyWebsite" defaultValue={settings.companyWebsite ?? ""} placeholder="www.freelancerkw.com" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="companyInstagram" className="flex items-center gap-1.5">
+                Instagram
+              </Label>
+              <Input id="companyInstagram" name="companyInstagram" defaultValue={settings.companyInstagram ?? ""} placeholder="@free.lancerinterior" />
+            </div>
           </div>
+          <Field id="authorizedSignerName" label="Authorized signer name" defaultValue={settings.authorizedSignerName} placeholder="Basir Ahmed" />
+          <div className="space-y-2">
+            <Label>Logo</Label>
+            <FileUpload id="logo" currentLabel={settings.logoPath ? "Current logo saved" : undefined} />
+          </div>
+          <SignatureField currentUrl={settings.signatureUrl} currentPath={settings.signaturePath} />
         </CardContent>
       </Card>
 
@@ -64,7 +81,7 @@ export function SettingsForm({ settings }: { settings: AppSettings }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field id="currency" label="Currency" defaultValue={settings.currency} required />
-            <Field id="vatRate" label="VAT rate" type="number" step="0.0001" min="0" max="1" defaultValue={settings.vatRate} required />
+            <Field id="vatRate" label="VAT rate (0 = no VAT)" type="number" step="0.0001" min="0" max="1" defaultValue={settings.vatRate} required />
           </div>
           <Field id="vatNumber" label="VAT number" defaultValue={settings.vatNumber} />
         </CardContent>
@@ -80,8 +97,9 @@ export function SettingsForm({ settings }: { settings: AppSettings }) {
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field id="bankName" label="Bank name" defaultValue={settings.bankName} />
-            <Field id="bankAccountName" label="Account name" defaultValue={settings.bankAccountName} />
+            <Field id="bankAccountName" label="Account holder name" defaultValue={settings.bankAccountName} />
           </div>
+          <Field id="bankAccountNumber" label="Account number" defaultValue={settings.bankAccountNumber} />
           <Field id="bankIban" label="IBAN" defaultValue={settings.bankIban} />
           <Field id="bankSwift" label="SWIFT" defaultValue={settings.bankSwift} />
         </CardContent>
@@ -112,7 +130,7 @@ export function SettingsForm({ settings }: { settings: AppSettings }) {
             </label>
             <label className="flex min-h-14 items-center gap-3 rounded-md border border-input bg-card px-3 text-sm font-medium">
               <input type="radio" name="preferredLanguage" value="ar" defaultChecked={settings.preferredLanguage === "ar"} />
-              Arabic
+              Arabic (عربي)
             </label>
           </div>
         </CardContent>
@@ -124,6 +142,136 @@ export function SettingsForm({ settings }: { settings: AppSettings }) {
         {pending ? "Saving..." : "Save settings"}
       </Button>
     </form>
+  );
+}
+
+function SignatureField({ currentUrl, currentPath }: { currentUrl?: string | null; currentPath?: string | null }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const padRef = useRef<SignaturePad | null>(null);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+  const [drawing, setDrawing] = useState(false);
+  const [hasDrawing, setHasDrawing] = useState(false);
+
+  const startDrawing = useCallback(() => {
+    setDrawing(true);
+    setHasDrawing(false);
+    setTimeout(() => {
+      if (canvasRef.current) {
+        padRef.current = new SignaturePad(canvasRef.current, { penColor: "#171717" });
+        padRef.current.addEventListener("endStroke", () => setHasDrawing(true));
+      }
+    }, 50);
+  }, []);
+
+  const clearPad = useCallback(() => {
+    padRef.current?.clear();
+    setHasDrawing(false);
+    if (hiddenInputRef.current) hiddenInputRef.current.value = "";
+  }, []);
+
+  const savePad = useCallback(() => {
+    if (!padRef.current || padRef.current.isEmpty()) return;
+    const dataUrl = padRef.current.toDataURL("image/png");
+    // Convert data URL to a File and attach to hidden input via DataTransfer
+    fetch(dataUrl)
+      .then((r) => r.blob())
+      .then((blob) => {
+        const file = new File([blob], "signature.png", { type: "image/png" });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        if (hiddenInputRef.current) {
+          hiddenInputRef.current.files = dt.files;
+        }
+        setDrawing(false);
+        setHasDrawing(true);
+      });
+  }, []);
+
+  useEffect(() => {
+    return () => { padRef.current?.off(); };
+  }, []);
+
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-1.5">
+        <PenLine className="h-3.5 w-3.5 text-wood-700" /> Signature
+      </Label>
+
+      {currentUrl && !drawing ? (
+        <div className="rounded-md border border-input bg-card p-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={currentUrl} alt="Saved signature" className="h-12 object-contain" />
+          <button
+            type="button"
+            onClick={startDrawing}
+            className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary"
+          >
+            <PenLine className="h-3 w-3" /> Redraw signature
+          </button>
+        </div>
+      ) : !drawing ? (
+        <div className="rounded-md border border-dashed border-input bg-card p-4 text-center">
+          <button
+            type="button"
+            onClick={startDrawing}
+            className="flex w-full flex-col items-center gap-2 text-sm text-muted-foreground hover:text-primary"
+          >
+            <PenLine className="h-6 w-6" />
+            Draw your signature
+          </button>
+        </div>
+      ) : null}
+
+      {drawing ? (
+        <div className="space-y-2 rounded-md border border-input bg-card p-3">
+          <p className="text-xs text-muted-foreground">Draw your signature below</p>
+          <canvas
+            ref={canvasRef}
+            width={400}
+            height={120}
+            className="w-full rounded border border-input bg-white touch-none"
+            style={{ cursor: "crosshair" }}
+          />
+          <div className="flex gap-2">
+            <Button type="button" size="sm" variant="secondary" onClick={clearPad}>
+              <Trash2 className="h-3.5 w-3.5" /> Clear
+            </Button>
+            <Button type="button" size="sm" onClick={savePad} disabled={!hasDrawing}>
+              <Save className="h-3.5 w-3.5" /> Use this signature
+            </Button>
+          </div>
+          {hasDrawing && !drawing ? null : (
+            <p className="text-xs text-green-600">
+              {hasDrawing ? "Signature ready — click Save settings to apply." : ""}
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      {/* Hidden file input — populated from canvas drawing OR kept empty if using existing */}
+      <input ref={hiddenInputRef} id="signature" name="signature" type="file" accept="image/*" className="hidden" />
+      {!drawing && !currentPath ? (
+        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+          <Upload className="h-3 w-3" />
+          <span>Or upload a signature image</span>
+          <label htmlFor="signature-upload" className="cursor-pointer underline">Browse</label>
+          <input
+            id="signature-upload"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file && hiddenInputRef.current) {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                hiddenInputRef.current.files = dt.files;
+              }
+            }}
+          />
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -171,16 +319,13 @@ function TextArea({
   );
 }
 
-function FileUpload({ id, label, currentLabel }: { id: string; label: string; currentLabel?: string }) {
+function FileUpload({ id, currentLabel }: { id: string; currentLabel?: string }) {
   return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <div className="rounded-md border border-input bg-card p-3">
-        <Input id={id} name={id} type="file" accept="image/*" className="border-0 p-0" />
-        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-          <Upload className="h-3.5 w-3.5" />
-          <span>{currentLabel ?? "PNG or JPG"}</span>
-        </div>
+    <div className="rounded-md border border-input bg-card p-3">
+      <Input id={id} name={id} type="file" accept="image/*" className="border-0 p-0" />
+      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+        <Upload className="h-3.5 w-3.5" />
+        <span>{currentLabel ?? "PNG or JPG recommended"}</span>
       </div>
     </div>
   );

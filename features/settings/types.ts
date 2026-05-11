@@ -3,6 +3,9 @@ export type AppSettings = {
   companyPhone?: string | null;
   companyEmail?: string | null;
   companyAddress?: string | null;
+  companyWebsite?: string | null;
+  companyInstagram?: string | null;
+  authorizedSignerName?: string | null;
   logoPath?: string | null;
   logoUrl?: string | null;
   signaturePath?: string | null;
@@ -11,6 +14,7 @@ export type AppSettings = {
   vatRate: number;
   bankName?: string | null;
   bankAccountName?: string | null;
+  bankAccountNumber?: string | null;
   bankIban?: string | null;
   bankSwift?: string | null;
   defaultTermsEn?: string | null;

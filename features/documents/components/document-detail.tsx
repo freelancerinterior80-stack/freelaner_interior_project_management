@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Download, MessageCircle, ReceiptText } from "lucide-react";
+import type { Route } from "next";
 import { createInvoiceFromQuotation } from "@/features/documents/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,18 +47,24 @@ export function DocumentDetail(props: Props) {
           <Totals document={document} />
           <div className="grid grid-cols-2 gap-3">
             <Button asChild variant="secondary">
-              <Link href={exportPath} target="_blank">
+              <Link href={exportPath as Route} target="_blank">
                 <Download className="h-4 w-4" />
-                PDF
+                PDF (EN)
               </Link>
             </Button>
             <Button asChild variant="secondary">
-              <Link href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}>
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp
+              <Link href={`${exportPath}?lang=ar` as Route} target="_blank">
+                <Download className="h-4 w-4" />
+                PDF (عربي)
               </Link>
             </Button>
           </div>
+          <Button asChild variant="secondary" className="w-full">
+            <Link href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}>
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
+            </Link>
+          </Button>
           {kind === "quotation" ? (
             <form action={createInvoiceFromQuotation}>
               <input type="hidden" name="quotationId" value={document.id} />

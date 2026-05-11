@@ -43,7 +43,7 @@ export async function createQuotationFromBoq(formData: FormData) {
   }
 
   const subtotal = Number(boq.subtotal ?? 0);
-  const vatRate = 0.15;
+  const vatRate = 0;
   const { data: quotation } = await supabase
     .from("quotations")
     .insert({
