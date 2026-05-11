@@ -1,18 +1,30 @@
+import fs from "fs";
 import path from "path";
 import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Boq } from "@/features/boq/types";
 import type { DocumentItem, Invoice, Quotation } from "@/features/documents/types";
 import type { AppSettings } from "@/features/settings/types";
 
-const ARABIC_FONT_SRC = path.join(process.cwd(), "public", "fonts", "NotoSansArabic-Regular.ttf");
+// Load font as base64 so it works regardless of server filesystem layout.
+// Falls back to a public URL if the file cannot be read.
+function loadArabicFontSrc(): string {
+  try {
+    const filePath = path.join(process.cwd(), "public", "fonts", "NotoSansArabic-Regular.ttf");
+    const buf = fs.readFileSync(filePath);
+    return `data:font/truetype;base64,${buf.toString("base64")}`;
+  } catch {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    return `${appUrl}/fonts/NotoSansArabic-Regular.ttf`;
+  }
+}
+
+const ARABIC_FONT_SRC = loadArabicFontSrc();
 
 Font.register({
   family: "NotoSansArabic",
   fonts: [
     { src: ARABIC_FONT_SRC, fontWeight: "normal" },
-    { src: ARABIC_FONT_SRC, fontWeight: "bold" },
-    { src: ARABIC_FONT_SRC, fontWeight: 700 },
-    { src: ARABIC_FONT_SRC, fontWeight: 400 }
+    { src: ARABIC_FONT_SRC, fontWeight: "bold" }
   ]
 });
 
