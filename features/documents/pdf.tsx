@@ -1,30 +1,18 @@
-import fs from "fs";
 import path from "path";
 import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Boq } from "@/features/boq/types";
 import type { DocumentItem, Invoice, Quotation } from "@/features/documents/types";
 import type { AppSettings } from "@/features/settings/types";
 
-// Load font as base64 so it works regardless of server filesystem layout.
-// Falls back to a public URL if the file cannot be read.
-function loadArabicFontSrc(): string {
-  try {
-    const filePath = path.join(process.cwd(), "public", "fonts", "NotoSansArabic-Regular.ttf");
-    const buf = fs.readFileSync(filePath);
-    return `data:font/truetype;base64,${buf.toString("base64")}`;
-  } catch {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    return `${appUrl}/fonts/NotoSansArabic-Regular.ttf`;
-  }
-}
-
-const ARABIC_FONT_SRC = loadArabicFontSrc();
+// The font file lives at public/fonts/ — confirmed accessible at /var/task/public/fonts/ on the server.
+// Register all needed weights using the same TTF so bold text doesn't get an undefined font lookup.
+const ARABIC_FONT = path.join(process.cwd(), "public", "fonts", "NotoSansArabic-Regular.ttf");
 
 Font.register({
   family: "NotoSansArabic",
   fonts: [
-    { src: ARABIC_FONT_SRC, fontWeight: "normal" },
-    { src: ARABIC_FONT_SRC, fontWeight: "bold" }
+    { src: ARABIC_FONT, fontWeight: 400 },
+    { src: ARABIC_FONT, fontWeight: 700 }
   ]
 });
 
@@ -96,10 +84,14 @@ const styles = StyleSheet.create({
   },
   pageAr: {
     padding: 36,
-    fontFamily: "NotoSansArabic",
+    fontFamily: "Helvetica",
     color: "#171717",
     fontSize: 9,
     backgroundColor: "#ffffff"
+  },
+  arabicFont: {
+    fontFamily: "NotoSansArabic",
+    fontWeight: 400
   },
   header: {
     flexDirection: "row",
@@ -512,13 +504,13 @@ function Header({
 
       {/* Right: document info */}
       <View style={ar ? styles.docBlockAr : styles.docBlock}>
-        <Text style={styles.docType}>{title}</Text>
+        <Text style={[styles.docType, ar ? styles.arabicFont : {}]}>{title}</Text>
         <Text style={styles.docNumber}># {number}</Text>
-        {project ? <Text style={ar ? styles.docMetaAr : styles.docMeta}>{t("project", language)}: {project}</Text> : null}
-        {client ? <Text style={ar ? styles.docMetaAr : styles.docMeta}>{t("client", language)}: {client}</Text> : null}
-        {date ? <Text style={ar ? styles.docMetaAr : styles.docMeta}>{t("date", language)}: {date}</Text> : null}
-        {validUntil ? <Text style={ar ? styles.docMetaAr : styles.docMeta}>{t("validUntil", language)}: {validUntil}</Text> : null}
-        {dueDate ? <Text style={ar ? styles.docMetaAr : styles.docMeta}>{t("dueDate", language)}: {dueDate}</Text> : null}
+        {project ? <Text style={[ar ? styles.docMetaAr : styles.docMeta, ar ? styles.arabicFont : {}]}>{t("project", language)}: {project}</Text> : null}
+        {client ? <Text style={[ar ? styles.docMetaAr : styles.docMeta, ar ? styles.arabicFont : {}]}>{t("client", language)}: {client}</Text> : null}
+        {date ? <Text style={[ar ? styles.docMetaAr : styles.docMeta, ar ? styles.arabicFont : {}]}>{t("date", language)}: {date}</Text> : null}
+        {validUntil ? <Text style={[ar ? styles.docMetaAr : styles.docMeta, ar ? styles.arabicFont : {}]}>{t("validUntil", language)}: {validUntil}</Text> : null}
+        {dueDate ? <Text style={[ar ? styles.docMetaAr : styles.docMeta, ar ? styles.arabicFont : {}]}>{t("dueDate", language)}: {dueDate}</Text> : null}
       </View>
     </View>
   );
@@ -538,15 +530,15 @@ function ItemsTable({
   return (
     <View>
       <View style={ar ? styles.tableHeaderAr : styles.tableHeader}>
-        <Text style={[styles.tableHeaderCell, ar ? styles.colDescAr : styles.colDesc]}>{t("description", language)}</Text>
-        <Text style={[styles.tableHeaderCell, ar ? styles.colQtyAr : styles.colQty]}>{t("qty", language)}</Text>
-        <Text style={[styles.tableHeaderCell, ar ? styles.colUnitAr : styles.colUnit]}>{t("unit", language)}</Text>
-        <Text style={[styles.tableHeaderCell, ar ? styles.colRateAr : styles.colRate]}>{t("rate", language)}</Text>
-        <Text style={[styles.tableHeaderCell, ar ? styles.colTotalAr : styles.colTotal]}>{t("total", language)}</Text>
+        <Text style={[styles.tableHeaderCell, ar ? styles.colDescAr : styles.colDesc, ar ? styles.arabicFont : {}]}>{t("description", language)}</Text>
+        <Text style={[styles.tableHeaderCell, ar ? styles.colQtyAr : styles.colQty, ar ? styles.arabicFont : {}]}>{t("qty", language)}</Text>
+        <Text style={[styles.tableHeaderCell, ar ? styles.colUnitAr : styles.colUnit, ar ? styles.arabicFont : {}]}>{t("unit", language)}</Text>
+        <Text style={[styles.tableHeaderCell, ar ? styles.colRateAr : styles.colRate, ar ? styles.arabicFont : {}]}>{t("rate", language)}</Text>
+        <Text style={[styles.tableHeaderCell, ar ? styles.colTotalAr : styles.colTotal, ar ? styles.arabicFont : {}]}>{t("total", language)}</Text>
       </View>
       {items.map((item, i) => (
         <View key={item.id} style={ar ? (i % 2 === 0 ? styles.tableRowEvenAr : styles.tableRowOddAr) : (i % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd)}>
-          <Text style={ar ? styles.colDescAr : styles.colDesc}>{item.description}</Text>
+          <Text style={[ar ? styles.colDescAr : styles.colDesc, ar ? styles.arabicFont : {}]}>{item.description}</Text>
           <Text style={ar ? styles.colQtyAr : styles.colQty}>{item.quantity}</Text>
           <Text style={ar ? styles.colUnitAr : styles.colUnit}>{item.unit.toUpperCase()}</Text>
           <Text style={ar ? styles.colRateAr : styles.colRate}>{money(item.unitRate, currency)}</Text>
@@ -572,12 +564,12 @@ function TotalsBlock({
     <View style={ar ? styles.totalsBlockAr : styles.totalsBlock}>
       {rows.map(([label, value]) => (
         <View key={label} style={ar ? styles.totalsRowAr : styles.totalsRow}>
-          <Text style={styles.totalsLabel}>{label}</Text>
+          <Text style={[styles.totalsLabel, ar ? styles.arabicFont : {}]}>{label}</Text>
           <Text style={styles.totalsValue}>{value}</Text>
         </View>
       ))}
       <View style={ar ? styles.totalsFinalRowAr : styles.totalsFinalRow}>
-        <Text style={styles.totalsFinalLabel}>{finalLabel}</Text>
+        <Text style={[styles.totalsFinalLabel, ar ? styles.arabicFont : {}]}>{finalLabel}</Text>
         <Text style={styles.totalsFinalValue}>{finalValue}</Text>
       </View>
     </View>
@@ -600,7 +592,7 @@ function FooterRow({
     <View style={ar ? styles.footerGridAr : styles.footerGrid}>
       {hasBank ? (
         <View style={styles.footerBox}>
-          <Text style={styles.footerBoxTitle}>{t("bankDetails", language)}</Text>
+          <Text style={[styles.footerBoxTitle, ar ? styles.arabicFont : {}]}>{t("bankDetails", language)}</Text>
           {settings?.bankName ? <Text style={styles.footerBoxText}>{settings.bankName}</Text> : null}
           {settings?.bankAccountName ? <Text style={styles.footerBoxText}>{settings.bankAccountName}</Text> : null}
           {settings?.bankAccountNumber ? <Text style={styles.footerBoxText}>A/C: {settings.bankAccountNumber}</Text> : null}
@@ -610,7 +602,7 @@ function FooterRow({
       ) : null}
 
       <View style={styles.footerBox}>
-        <Text style={styles.footerBoxTitle}>{t("authorizedSignature", language)}</Text>
+        <Text style={[styles.footerBoxTitle, ar ? styles.arabicFont : {}]}>{t("authorizedSignature", language)}</Text>
         {settings?.signatureUrl ? (
           // eslint-disable-next-line jsx-a11y/alt-text
           <Image src={settings.signatureUrl} style={styles.signatureImg} />
@@ -638,8 +630,8 @@ function TermsSection({
 
   return (
     <View style={styles.terms}>
-      <Text style={styles.termsTitle}>{title}</Text>
-      <Text style={[styles.termsText, ar ? { textAlign: "right" } : {}]}>{text}</Text>
+      <Text style={[styles.termsTitle, ar ? styles.arabicFont : {}]}>{title}</Text>
+      <Text style={[styles.termsText, ar ? styles.arabicFont : {}, ar ? { textAlign: "right" } : {}]}>{text}</Text>
     </View>
   );
 }
