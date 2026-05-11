@@ -1,19 +1,13 @@
-import path from "path";
 import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Boq } from "@/features/boq/types";
 import type { DocumentItem, Invoice, Quotation } from "@/features/documents/types";
 import type { AppSettings } from "@/features/settings/types";
 
-// The font file lives at public/fonts/ — confirmed accessible at /var/task/public/fonts/ on the server.
-// Register all needed weights using the same TTF so bold text doesn't get an undefined font lookup.
-const ARABIC_FONT = path.join(process.cwd(), "public", "fonts", "NotoSansArabic-Regular.ttf");
-
+// Amiri has simpler GSUB lookup tables that fontkit 2.x handles correctly.
+// NotoSansArabic uses lookup types 6/7/8 that crash fontkit during Arabic shaping.
 Font.register({
-  family: "NotoSansArabic",
-  fonts: [
-    { src: ARABIC_FONT, fontWeight: 400 },
-    { src: ARABIC_FONT, fontWeight: 700 }
-  ]
+  family: "Amiri",
+  src: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/amiri/Amiri-Regular.ttf"
 });
 
 const BRAND = "#6f4926";
@@ -90,7 +84,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff"
   },
   arabicFont: {
-    fontFamily: "NotoSansArabic",
+    fontFamily: "Amiri",
     fontWeight: 400
   },
   header: {
@@ -133,7 +127,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end"
   },
   docBlockAr: {
-    alignItems: "flex-start"
+    alignItems: "flex-end"
   },
   docType: {
     fontSize: 22,
@@ -157,7 +151,7 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: MUTED,
     marginBottom: 2,
-    textAlign: "left"
+    textAlign: "right"
   },
   tableHeader: {
     flexDirection: "row",
@@ -218,7 +212,7 @@ const styles = StyleSheet.create({
     borderTop: `1px solid ${BORDER}`
   },
   totalsBlockAr: {
-    marginRight: "auto",
+    marginLeft: "auto",
     width: "42%",
     marginTop: 14,
     borderTop: `1px solid ${BORDER}`
@@ -486,8 +480,11 @@ function Header({
   const ar = language === "ar";
 
   return (
-    <View style={ar ? styles.headerAr : styles.header}>
-      {/* Left: company info */}
+    // Header uses the same LTR layout for both languages:
+    // company info LEFT (flex:1), document info RIGHT (flex-end aligned).
+    // Arabic text in the doc block is right-aligned naturally within the right block.
+    <View style={styles.header}>
+      {/* Left: company info — always left, same structure as EN */}
       <View style={{ flex: 1 }}>
         {settings?.logoUrl ? (
           // eslint-disable-next-line jsx-a11y/alt-text
@@ -502,15 +499,15 @@ function Header({
         {settings?.vatNumber ? <Text style={styles.companyDetail}>VAT: {settings.vatNumber}</Text> : null}
       </View>
 
-      {/* Right: document info */}
-      <View style={ar ? styles.docBlockAr : styles.docBlock}>
+      {/* Right: document info — always right-aligned, Arabic font applied when ar=true */}
+      <View style={styles.docBlock}>
         <Text style={[styles.docType, ar ? styles.arabicFont : {}]}>{title}</Text>
         <Text style={styles.docNumber}># {number}</Text>
-        {project ? <Text style={[ar ? styles.docMetaAr : styles.docMeta, ar ? styles.arabicFont : {}]}>{t("project", language)}: {project}</Text> : null}
-        {client ? <Text style={[ar ? styles.docMetaAr : styles.docMeta, ar ? styles.arabicFont : {}]}>{t("client", language)}: {client}</Text> : null}
-        {date ? <Text style={[ar ? styles.docMetaAr : styles.docMeta, ar ? styles.arabicFont : {}]}>{t("date", language)}: {date}</Text> : null}
-        {validUntil ? <Text style={[ar ? styles.docMetaAr : styles.docMeta, ar ? styles.arabicFont : {}]}>{t("validUntil", language)}: {validUntil}</Text> : null}
-        {dueDate ? <Text style={[ar ? styles.docMetaAr : styles.docMeta, ar ? styles.arabicFont : {}]}>{t("dueDate", language)}: {dueDate}</Text> : null}
+        {project ? <Text style={[styles.docMeta, ar ? styles.arabicFont : {}]}>{t("project", language)}: {project}</Text> : null}
+        {client ? <Text style={[styles.docMeta, ar ? styles.arabicFont : {}]}>{t("client", language)}: {client}</Text> : null}
+        {date ? <Text style={[styles.docMeta, ar ? styles.arabicFont : {}]}>{t("date", language)}: {date}</Text> : null}
+        {validUntil ? <Text style={[styles.docMeta, ar ? styles.arabicFont : {}]}>{t("validUntil", language)}: {validUntil}</Text> : null}
+        {dueDate ? <Text style={[styles.docMeta, ar ? styles.arabicFont : {}]}>{t("dueDate", language)}: {dueDate}</Text> : null}
       </View>
     </View>
   );
@@ -588,31 +585,43 @@ function FooterRow({
   const ar = language === "ar";
   const hasBank = showBank && (settings?.bankName || settings?.bankIban);
 
+  const bankBox = hasBank ? (
+    <View style={styles.footerBox}>
+      <Text style={[styles.footerBoxTitle, ar ? styles.arabicFont : {}]}>{t("bankDetails", language)}</Text>
+      {settings?.bankName ? <Text style={styles.footerBoxText}>{settings.bankName}</Text> : null}
+      {settings?.bankAccountName ? <Text style={styles.footerBoxText}>{settings.bankAccountName}</Text> : null}
+      {settings?.bankAccountNumber ? <Text style={styles.footerBoxText}>A/C: {settings.bankAccountNumber}</Text> : null}
+      {settings?.bankIban ? <Text style={styles.footerBoxText}>IBAN: {settings.bankIban}</Text> : null}
+      {settings?.bankSwift ? <Text style={styles.footerBoxText}>SWIFT: {settings.bankSwift}</Text> : null}
+    </View>
+  ) : null;
+
+  const signatureBox = (
+    <View style={styles.footerBox}>
+      <Text style={[styles.footerBoxTitle, ar ? styles.arabicFont : {}]}>{t("authorizedSignature", language)}</Text>
+      {settings?.signatureUrl ? (
+        // eslint-disable-next-line jsx-a11y/alt-text
+        <Image src={settings.signatureUrl} style={styles.signatureImg} />
+      ) : (
+        <View style={styles.signatureLine} />
+      )}
+      {settings?.authorizedSignerName ? (
+        <Text style={styles.signerName}>{settings.authorizedSignerName}</Text>
+      ) : null}
+    </View>
+  );
+
   return (
     <View style={ar ? styles.footerGridAr : styles.footerGrid}>
-      {hasBank ? (
-        <View style={styles.footerBox}>
-          <Text style={[styles.footerBoxTitle, ar ? styles.arabicFont : {}]}>{t("bankDetails", language)}</Text>
-          {settings?.bankName ? <Text style={styles.footerBoxText}>{settings.bankName}</Text> : null}
-          {settings?.bankAccountName ? <Text style={styles.footerBoxText}>{settings.bankAccountName}</Text> : null}
-          {settings?.bankAccountNumber ? <Text style={styles.footerBoxText}>A/C: {settings.bankAccountNumber}</Text> : null}
-          {settings?.bankIban ? <Text style={styles.footerBoxText}>IBAN: {settings.bankIban}</Text> : null}
-          {settings?.bankSwift ? <Text style={styles.footerBoxText}>SWIFT: {settings.bankSwift}</Text> : null}
-        </View>
-      ) : null}
-
-      <View style={styles.footerBox}>
-        <Text style={[styles.footerBoxTitle, ar ? styles.arabicFont : {}]}>{t("authorizedSignature", language)}</Text>
-        {settings?.signatureUrl ? (
-          // eslint-disable-next-line jsx-a11y/alt-text
-          <Image src={settings.signatureUrl} style={styles.signatureImg} />
-        ) : (
-          <View style={styles.signatureLine} />
-        )}
-        {settings?.authorizedSignerName ? (
-          <Text style={styles.signerName}>{settings.authorizedSignerName}</Text>
-        ) : null}
-      </View>
+      {ar ? (
+        // row-reverse: first child → RIGHT, second → LEFT
+        // Signature on RIGHT (authoritative/RTL reading start), bank on LEFT
+        <>{signatureBox}{bankBox}</>
+      ) : (
+        // row: first child → LEFT, second → RIGHT
+        // Bank on LEFT, signature on RIGHT
+        <>{bankBox}{signatureBox}</>
+      )}
     </View>
   );
 }
