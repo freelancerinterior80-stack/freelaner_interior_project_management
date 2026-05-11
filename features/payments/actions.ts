@@ -92,3 +92,26 @@ export async function createPayment(_: PaymentActionState, formData: FormData): 
   revalidatePath("/projects");
   redirect("/payments");
 }
+
+export async function deletePayment(formData: FormData) {
+  const paymentId = String(formData.get("id") ?? "");
+  if (!paymentId || !isSupabaseConfigured()) {
+    revalidatePath("/payments");
+    redirect("/payments");
+  }
+
+  const user = await requireUser();
+  const supabase = await createSupabaseServerClient();
+
+  await supabase
+    .from("payments")
+    .delete()
+    .eq("id", paymentId)
+    .eq("owner_id", user.id);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/payments");
+  revalidatePath("/invoices");
+  revalidatePath("/projects");
+  redirect("/payments");
+}

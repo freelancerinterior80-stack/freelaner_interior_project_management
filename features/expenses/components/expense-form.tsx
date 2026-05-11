@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const initialState: ExpenseActionState = { ok: false };
-const categories = ["labor", "material", "transport", "furniture", "electrical", "miscellaneous"];
+const categories = ["labor", "material", "transport", "furniture", "electrical", "miscellaneous", "sub_contractor"];
 
 export function ExpenseForm({ projects }: { projects: ProjectOption[] }) {
   const [state, action, pending] = useActionState(createExpense, initialState);

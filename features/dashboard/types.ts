@@ -6,6 +6,7 @@ export type DashboardData = {
     expense: number;
     profit: number;
     pendingPayments: number;
+    outstandingInvoices: number;
   };
   activeProjects: Project[];
   recentExpenses: {

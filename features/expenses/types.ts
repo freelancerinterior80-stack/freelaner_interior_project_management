@@ -4,7 +4,8 @@ export type ExpenseCategory =
   | "transport"
   | "furniture"
   | "electrical"
-  | "miscellaneous";
+  | "miscellaneous"
+  | "sub_contractor";
 
 export type Expense = {
   id: string;

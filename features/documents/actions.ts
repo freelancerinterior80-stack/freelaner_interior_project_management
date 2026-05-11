@@ -196,3 +196,85 @@ export async function createInvoiceFromQuotation(
   revalidatePath("/invoices");
   redirect(`/invoices/${invoice.id}`);
 }
+
+const updateTermsSchema = z.object({
+  id: z.string().min(1),
+  kind: z.enum(["quotation", "invoice"]),
+  termsEn: z.string().optional(),
+  termsAr: z.string().optional(),
+  notes: z.string().optional()
+});
+
+export type UpdateTermsState = { ok: boolean; error?: string };
+
+export async function updateDocumentTerms(
+  _: UpdateTermsState,
+  formData: FormData
+): Promise<UpdateTermsState> {
+  const parsed = updateTermsSchema.safeParse({
+    id: formData.get("id"),
+    kind: formData.get("kind"),
+    termsEn: formData.get("termsEn") || undefined,
+    termsAr: formData.get("termsAr") || undefined,
+    notes: formData.get("notes") || undefined
+  });
+
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { ok: true };
+  }
+
+  const user = await requireUser();
+  const supabase = await createSupabaseServerClient();
+  const table = parsed.data.kind === "quotation" ? "quotations" : "invoices";
+
+  const { error } = await supabase
+    .from(table)
+    .update({
+      terms_en: parsed.data.termsEn ?? null,
+      terms_ar: parsed.data.termsAr ?? null,
+      notes: parsed.data.notes ?? null
+    })
+    .eq("id", parsed.data.id)
+    .eq("owner_id", user.id);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  const path = parsed.data.kind === "quotation"
+    ? `/quotations/${parsed.data.id}`
+    : `/invoices/${parsed.data.id}`;
+
+  revalidatePath(path);
+  return { ok: true };
+}
+
+export async function deleteQuotation(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id || !isSupabaseConfigured()) {
+    redirect("/quotations");
+  }
+  const user = await requireUser();
+  const supabase = await createSupabaseServerClient();
+  await supabase.from("quotations").delete().eq("id", id).eq("owner_id", user.id);
+  revalidatePath("/quotations");
+  revalidatePath("/dashboard");
+  redirect("/quotations");
+}
+
+export async function deleteInvoice(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id || !isSupabaseConfigured()) {
+    redirect("/invoices");
+  }
+  const user = await requireUser();
+  const supabase = await createSupabaseServerClient();
+  await supabase.from("invoices").delete().eq("id", id).eq("owner_id", user.id);
+  revalidatePath("/invoices");
+  revalidatePath("/dashboard");
+  redirect("/invoices");
+}

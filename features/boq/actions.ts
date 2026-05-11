@@ -30,6 +30,26 @@ export type BoqActionState = {
   error?: string;
 };
 
+export async function deleteBoq(formData: FormData) {
+  const boqId = String(formData.get("boqId") ?? "");
+  if (!boqId || !isSupabaseConfigured()) {
+    revalidatePath("/boq");
+    redirect("/boq");
+  }
+
+  const user = await requireUser();
+  const supabase = await createSupabaseServerClient();
+
+  await supabase
+    .from("boqs")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", boqId)
+    .eq("owner_id", user.id);
+
+  revalidatePath("/boq");
+  redirect("/boq");
+}
+
 export async function createBoq(_: BoqActionState, formData: FormData): Promise<BoqActionState> {
   const parsed = createBoqSchema.safeParse({
     name: formData.get("name"),

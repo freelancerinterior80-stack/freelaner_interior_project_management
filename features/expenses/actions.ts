@@ -9,7 +9,7 @@ import { requireUser } from "@/lib/auth/guards";
 
 const expenseSchema = z.object({
   amount: z.coerce.number().min(0.01, "Amount is required."),
-  category: z.enum(["labor", "material", "transport", "furniture", "electrical", "miscellaneous"]),
+  category: z.enum(["labor", "material", "transport", "furniture", "electrical", "miscellaneous", "sub_contractor"]),
   projectId: z.string().optional(),
   supplierName: z.string().optional(),
   expenseDate: z.string().min(1, "Date is required."),
@@ -91,6 +91,28 @@ export async function createExpense(_: ExpenseActionState, formData: FormData): 
   if (error) {
     return { ok: false, error: error.message };
   }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/expenses");
+  revalidatePath("/projects");
+  redirect("/expenses");
+}
+
+export async function deleteExpense(formData: FormData) {
+  const expenseId = String(formData.get("id") ?? "");
+  if (!expenseId || !isSupabaseConfigured()) {
+    revalidatePath("/expenses");
+    redirect("/expenses");
+  }
+
+  const user = await requireUser();
+  const supabase = await createSupabaseServerClient();
+
+  await supabase
+    .from("expenses")
+    .delete()
+    .eq("id", expenseId)
+    .eq("owner_id", user.id);
 
   revalidatePath("/dashboard");
   revalidatePath("/expenses");

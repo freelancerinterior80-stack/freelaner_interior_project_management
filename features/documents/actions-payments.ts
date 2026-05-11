@@ -67,16 +67,16 @@ export async function recordInvoicePayment(
     return { ok: false, error: paymentError.message };
   }
 
-  // Determine new invoice status based on cumulative paid amount after this payment
+  // Determine new paid_amount and status after this payment
   const newPaidAmount = Number(invoice.paid_amount) + parsed.data.amount;
   const total = Number(invoice.total);
   const newStatus = newPaidAmount >= total ? "paid" : "part_paid";
 
-  // Only update status if it's not already cancelled
+  // Update paid_amount (which makes balance_due recalculate) and status
   if (!["cancelled"].includes(invoice.status)) {
     await supabase
       .from("invoices")
-      .update({ status: newStatus })
+      .update({ paid_amount: newPaidAmount, status: newStatus })
       .eq("id", parsed.data.invoiceId)
       .eq("owner_id", user.id);
   }

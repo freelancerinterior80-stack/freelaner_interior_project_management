@@ -44,7 +44,12 @@ export async function setOwnerSessionCookie() {
   }
 
   const fullName = process.env.OWNER_AUTH_NAME ?? "Owner";
-  const ownerId = await provisionOwnerInSupabase(ownerEmail, fullName);
+  // Always use the fixed owner ID so it matches owner_id stored in every DB row.
+  const ownerId = getOwnerId();
+
+  // Best-effort: ensure Supabase auth user + profile exist for FK constraints.
+  // Failures here do NOT block login — service role bypasses RLS anyway.
+  await ensureOwnerInSupabase(ownerEmail, fullName, ownerId).catch(() => {});
 
   const payload: OwnerSessionPayload = {
     id: ownerId,
@@ -63,47 +68,32 @@ export async function setOwnerSessionCookie() {
   });
 }
 
-// Ensures the owner exists in auth.users + profiles so FK constraints are satisfied.
-// Uses the admin API so no Supabase session is needed.
-async function provisionOwnerInSupabase(email: string, fullName: string): Promise<string> {
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    return getOwnerId();
-  }
+// Ensures a Supabase auth user with the target UUID + a profiles row exist.
+// Creates the user with the specific UUID so all data rows with that owner_id remain accessible.
+async function ensureOwnerInSupabase(email: string, fullName: string, targetId: string) {
+  if (!supabaseUrl || !supabaseServiceRoleKey) return;
 
   const admin = createClient(supabaseUrl, supabaseServiceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
 
-  // Find existing user by email
-  const { data: list } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  const existing = list?.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
-
-  let userId: string;
-
-  if (existing) {
-    userId = existing.id;
-  } else {
-    // Create a real Supabase auth user for the owner
-    const { data: created, error } = await admin.auth.admin.createUser({
+  // Check if the user with targetId already exists
+  const { data: byId } = await admin.auth.admin.getUserById(targetId);
+  if (!byId?.user) {
+    // Create with the specific UUID (may fail if email is already taken with a different UUID)
+    await admin.auth.admin.createUser({
+      id: targetId,
       email,
       email_confirm: true,
       user_metadata: { full_name: fullName }
     });
-
-    if (error || !created?.user) {
-      return getOwnerId();
-    }
-
-    userId = created.user.id;
   }
 
-  // Ensure profile row exists
+  // Ensure profile row exists for targetId
   await admin.from("profiles").upsert(
-    { id: userId, full_name: fullName },
+    { id: targetId, full_name: fullName },
     { onConflict: "id", ignoreDuplicates: true }
   );
-
-  return userId;
 }
 
 export async function getOwnerSessionUser(): Promise<AppUser | null> {

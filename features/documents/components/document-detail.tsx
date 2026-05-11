@@ -2,8 +2,11 @@ import Link from "next/link";
 import { Download, ReceiptText } from "lucide-react";
 import type { Route } from "next";
 import { CreateInvoiceSheet } from "@/features/documents/components/create-invoice-sheet";
+import { EditTermsSheet } from "@/features/documents/components/edit-terms-sheet";
 import { RecordPaymentSheet } from "@/features/documents/components/record-payment-sheet";
 import { SharePdfButton } from "@/features/documents/components/share-pdf-button";
+import { DeleteRecordButton } from "@/components/delete-record-button";
+import { deleteInvoice, deleteQuotation } from "@/features/documents/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,7 +37,14 @@ export function DocumentDetail(props: Props) {
           <h1 className="text-2xl font-semibold text-charcoal-900">{number}</h1>
           {document.clientName ? <p className="mt-1 text-sm text-muted-foreground">{document.clientName}</p> : null}
         </div>
-        <Badge variant={statusVariant(document.status)}>{document.status.replace("_", " ")}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={statusVariant(document.status)}>{document.status.replace("_", " ")}</Badge>
+          <DeleteRecordButton
+            id={document.id}
+            label={kind}
+            action={kind === "quotation" ? deleteQuotation : deleteInvoice}
+          />
+        </div>
       </div>
 
       <Card className="border-0 shadow-soft">
@@ -108,19 +118,35 @@ export function DocumentDetail(props: Props) {
         </CardContent>
       </Card>
 
-      {document.termsEn || document.termsAr ? (
-        <Card className="border-0 shadow-soft">
-          <CardContent className="space-y-3 p-4">
+      <Card className="border-0 shadow-soft">
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-center justify-between">
             <h2 className="font-semibold text-charcoal-900">Terms</h2>
-            {document.termsEn ? <p className="text-sm leading-6 text-muted-foreground">{document.termsEn}</p> : null}
-            {document.termsAr ? (
-              <p dir="rtl" className="text-sm leading-6 text-muted-foreground">
-                {document.termsAr}
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
+            <EditTermsSheet
+              id={document.id}
+              kind={kind}
+              termsEn={document.termsEn}
+              termsAr={document.termsAr}
+              notes={document.notes}
+            />
+          </div>
+          {document.termsEn ? (
+            <p className="text-sm leading-6 text-muted-foreground">{document.termsEn}</p>
+          ) : null}
+          {document.termsAr ? (
+            <p dir="rtl" className="text-sm leading-6 text-muted-foreground">{document.termsAr}</p>
+          ) : null}
+          {!document.termsEn && !document.termsAr ? (
+            <p className="text-sm text-muted-foreground">No terms added yet. Tap Edit terms to add.</p>
+          ) : null}
+          {document.notes ? (
+            <div className="rounded-md bg-secondary p-3">
+              <p className="text-xs font-medium text-muted-foreground">Notes</p>
+              <p className="mt-1 text-sm text-charcoal-900">{document.notes}</p>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
     </div>
   );
 }

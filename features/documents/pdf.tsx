@@ -182,25 +182,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     paddingVertical: 6,
     paddingHorizontal: 8,
-    backgroundColor: ROW_ALT
+    backgroundColor: ROW_ALT,
+    borderBottom: `1px solid ${BORDER}`
   },
   tableRowOdd: {
     flexDirection: "row",
     paddingVertical: 6,
     paddingHorizontal: 8,
-    backgroundColor: "#ffffff"
+    backgroundColor: "#ffffff",
+    borderBottom: `1px solid ${BORDER}`
   },
   tableRowEvenAr: {
     flexDirection: "row-reverse",
     paddingVertical: 6,
     paddingHorizontal: 8,
-    backgroundColor: ROW_ALT
+    backgroundColor: ROW_ALT,
+    borderBottom: `1px solid ${BORDER}`
   },
   tableRowOddAr: {
     flexDirection: "row-reverse",
     paddingVertical: 6,
     paddingHorizontal: 8,
-    backgroundColor: "#ffffff"
+    backgroundColor: "#ffffff",
+    borderBottom: `1px solid ${BORDER}`
   },
   colDesc: { width: "40%", fontSize: 8 },
   colQty: { width: "12%", textAlign: "right", fontSize: 8 },
@@ -350,7 +354,29 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     textTransform: "uppercase"
   },
-  termsText: { fontSize: 8, color: MUTED }
+  termsText: { fontSize: 8, color: MUTED },
+  // Page decorations
+  pageBorder: {
+    position: "absolute",
+    top: 18, left: 18, right: 18, bottom: 18,
+    border: `1px solid ${BORDER}`,
+    borderRadius: 3
+  },
+  pageNumberText: {
+    position: "absolute",
+    bottom: 7, left: 0, right: 0,
+    textAlign: "center",
+    fontSize: 7,
+    color: MUTED
+  },
+  // Excel-style table grid
+  tableWrapper: {
+    border: `1px solid ${BORDER}`,
+    borderRadius: 2,
+    overflow: "hidden"
+  },
+  cellBorder: { borderRight: `1px solid ${BORDER}` },
+  headerCellBorder: { borderRight: `1px solid rgba(255,255,255,0.3)` }
 });
 
 type Language = "en" | "ar";
@@ -384,6 +410,8 @@ export function BoqPdf({
   return (
     <Document>
       <Page size="A4" style={ar ? styles.pageAr : styles.page}>
+        <View style={styles.pageBorder} fixed />
+        <Text style={styles.pageNumberText} render={({ pageNumber, totalPages }) => totalPages > 1 ? `Page ${pageNumber} / ${totalPages}` : ""} fixed />
         <Header title={t("boq", language)} number={boq.name} project={boq.projectName} client={boq.clientName} settings={settings} language={language} />
         <ItemsTable items={items} currency={settings?.currency} language={language} />
         <TotalsBlock
@@ -421,6 +449,8 @@ export function QuotationPdf({
   return (
     <Document>
       <Page size="A4" style={ar ? styles.pageAr : styles.page}>
+        <View style={styles.pageBorder} fixed />
+        <Text style={styles.pageNumberText} render={({ pageNumber, totalPages }) => totalPages > 1 ? `Page ${pageNumber} / ${totalPages}` : ""} fixed />
         <Header
           title={t("quotation", language)}
           number={quotation.quotationNumber}
@@ -438,12 +468,15 @@ export function QuotationPdf({
           finalValue={money(quotation.total, cur)}
           ar={ar}
         />
-        <FooterRow settings={settings} language={language} showBank={false} />
-        <TermsSection
-          text={ar ? (quotation.termsAr ?? settings?.defaultTermsAr) : (quotation.termsEn ?? settings?.defaultTermsEn)}
-          title={t("termsTitle", language)}
-          ar={ar}
-        />
+        {/* Signature + Terms — at end of flow so they land on last page; wrap={false} prevents splitting */}
+        <View wrap={false}>
+          <FooterRow settings={settings} language={language} showBank={false} />
+          <TermsSection
+            text={ar ? (quotation.termsAr ?? settings?.defaultTermsAr) : (quotation.termsEn ?? settings?.defaultTermsEn)}
+            title={t("termsTitle", language)}
+            ar={ar}
+          />
+        </View>
       </Page>
     </Document>
   );
@@ -481,6 +514,8 @@ export function InvoicePdf({
   return (
     <Document>
       <Page size="A4" style={ar ? styles.pageAr : styles.page}>
+        <View style={styles.pageBorder} fixed />
+        <Text style={styles.pageNumberText} render={({ pageNumber, totalPages }) => totalPages > 1 ? `Page ${pageNumber} / ${totalPages}` : ""} fixed />
         <Header
           title={t("invoice", language)}
           number={invoice.invoiceNumber}
@@ -498,21 +533,24 @@ export function InvoicePdf({
           finalValue={finalValue}
           ar={ar}
         />
-        {hasDeposit && !hasPaid ? (
-          <PaymentScheduleSection
-            depositAmount={invoice.depositAmount}
-            total={invoice.total}
-            currency={cur}
-            language={language}
+        {/* Payment schedule + Signature + Terms — end of flow, land on last page; wrap={false} prevents splitting */}
+        <View wrap={false}>
+          {hasDeposit && !hasPaid ? (
+            <PaymentScheduleSection
+              depositAmount={invoice.depositAmount}
+              total={invoice.total}
+              currency={cur}
+              language={language}
+              ar={ar}
+            />
+          ) : null}
+          <FooterRow settings={settings} language={language} showBank={true} />
+          <TermsSection
+            text={ar ? (invoice.termsAr ?? settings?.defaultTermsAr) : (invoice.termsEn ?? settings?.defaultTermsEn)}
+            title={t("termsTitle", language)}
             ar={ar}
           />
-        ) : null}
-        <FooterRow settings={settings} language={language} showBank={true} />
-        <TermsSection
-          text={ar ? (invoice.termsAr ?? settings?.defaultTermsAr) : (invoice.termsEn ?? settings?.defaultTermsEn)}
-          title={t("termsTitle", language)}
-          ar={ar}
-        />
+        </View>
       </Page>
     </Document>
   );
@@ -588,22 +626,27 @@ function ItemsTable({
 }) {
   const ar = language === "ar";
 
+  // EN: border on desc/qty/unit/rate (not last col: total)
+  // AR row-reverse: desc is rightmost visual → no border; qty/unit/rate/total get border
+  const hb = styles.headerCellBorder;
+  const cb = styles.cellBorder;
+
   return (
-    <View>
+    <View style={styles.tableWrapper}>
       <View style={ar ? styles.tableHeaderAr : styles.tableHeader}>
-        <Text style={[styles.tableHeaderCell, ar ? styles.colDescAr : styles.colDesc, ar ? styles.arabicFont : {}]}>{t("description", language)}</Text>
-        <Text style={[styles.tableHeaderCell, ar ? styles.colQtyAr : styles.colQty, ar ? styles.arabicFont : {}]}>{t("qty", language)}</Text>
-        <Text style={[styles.tableHeaderCell, ar ? styles.colUnitAr : styles.colUnit, ar ? styles.arabicFont : {}]}>{t("unit", language)}</Text>
-        <Text style={[styles.tableHeaderCell, ar ? styles.colRateAr : styles.colRate, ar ? styles.arabicFont : {}]}>{t("rate", language)}</Text>
-        <Text style={[styles.tableHeaderCell, ar ? styles.colTotalAr : styles.colTotal, ar ? styles.arabicFont : {}]}>{t("total", language)}</Text>
+        <Text style={[styles.tableHeaderCell, ar ? styles.colDescAr : styles.colDesc, ar ? styles.arabicFont : {}, ar ? {} : hb]}>{t("description", language)}</Text>
+        <Text style={[styles.tableHeaderCell, ar ? styles.colQtyAr : styles.colQty, ar ? styles.arabicFont : {}, hb]}>{t("qty", language)}</Text>
+        <Text style={[styles.tableHeaderCell, ar ? styles.colUnitAr : styles.colUnit, ar ? styles.arabicFont : {}, hb]}>{t("unit", language)}</Text>
+        <Text style={[styles.tableHeaderCell, ar ? styles.colRateAr : styles.colRate, ar ? styles.arabicFont : {}, hb]}>{t("rate", language)}</Text>
+        <Text style={[styles.tableHeaderCell, ar ? styles.colTotalAr : styles.colTotal, ar ? styles.arabicFont : {}, ar ? hb : {}]}>{t("total", language)}</Text>
       </View>
       {items.map((item, i) => (
         <View key={item.id} style={ar ? (i % 2 === 0 ? styles.tableRowEvenAr : styles.tableRowOddAr) : (i % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd)}>
-          <Text style={[ar ? styles.colDescAr : styles.colDesc, ar ? styles.arabicFont : {}]}>{item.description}</Text>
-          <Text style={ar ? styles.colQtyAr : styles.colQty}>{item.quantity}</Text>
-          <Text style={ar ? styles.colUnitAr : styles.colUnit}>{item.unit.toUpperCase()}</Text>
-          <Text style={ar ? styles.colRateAr : styles.colRate}>{money(item.unitRate, currency)}</Text>
-          <Text style={ar ? styles.colTotalAr : styles.colTotal}>{money(item.total, currency)}</Text>
+          <Text style={[ar ? styles.colDescAr : styles.colDesc, ar ? styles.arabicFont : {}, ar ? {} : cb]}>{item.description}</Text>
+          <Text style={[ar ? styles.colQtyAr : styles.colQty, cb]}>{item.quantity}</Text>
+          <Text style={[ar ? styles.colUnitAr : styles.colUnit, cb]}>{item.unit.toUpperCase()}</Text>
+          <Text style={[ar ? styles.colRateAr : styles.colRate, cb]}>{money(item.unitRate, currency)}</Text>
+          <Text style={[ar ? styles.colTotalAr : styles.colTotal, ar ? cb : {}]}>{money(item.total, currency)}</Text>
         </View>
       ))}
     </View>

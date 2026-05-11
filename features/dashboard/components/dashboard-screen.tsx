@@ -56,6 +56,12 @@ export function DashboardScreen({ data }: { data: DashboardData }) {
             <CardTitle>Needs attention</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {data.totals.outstandingInvoices > 0 ? (
+              <AttentionItem
+                label="Outstanding invoices"
+                value={formatMoney(data.totals.outstandingInvoices)}
+              />
+            ) : null}
             {data.totals.pendingPayments > 0 ? (
               <AttentionItem
                 label="Pending payments"
@@ -69,7 +75,7 @@ export function DashboardScreen({ data }: { data: DashboardData }) {
                 value={`${material.currentStock}/${material.threshold}`}
               />
             ))}
-            {data.totals.pendingPayments === 0 && data.materialAlerts.length === 0 ? (
+            {data.totals.outstandingInvoices === 0 && data.totals.pendingPayments === 0 && data.materialAlerts.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nothing urgent right now.</p>
             ) : null}
           </CardContent>
