@@ -85,8 +85,33 @@ export async function createQuotationFromBoq(formData: FormData) {
   redirect(`/quotations/${quotation.id}`);
 }
 
-export async function createInvoiceFromQuotation(formData: FormData) {
-  const parsed = idSchema.parse({ id: formData.get("quotationId") });
+const createInvoiceSchema = z.object({
+  quotationId: z.string().min(1),
+  issueDate: z.string().min(1, "Issue date is required."),
+  dueDate: z.string().optional(),
+  discountAmount: z.coerce.number().min(0).default(0),
+  vatRate: z.coerce.number().min(0).max(1).default(0),
+  depositAmount: z.coerce.number().min(0).default(0)
+});
+
+export type CreateInvoiceState = { ok: boolean; error?: string };
+
+export async function createInvoiceFromQuotation(
+  _: CreateInvoiceState,
+  formData: FormData
+): Promise<CreateInvoiceState> {
+  const parsed = createInvoiceSchema.safeParse({
+    quotationId: formData.get("quotationId"),
+    issueDate: formData.get("issueDate"),
+    dueDate: formData.get("dueDate") || undefined,
+    discountAmount: formData.get("discountAmount") || 0,
+    vatRate: formData.get("vatRate") || 0,
+    depositAmount: formData.get("depositAmount") || 0
+  });
+
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Check invoice details." };
+  }
 
   if (!isSupabaseConfigured()) {
     redirect("/invoices/demo-inv-001");
@@ -98,22 +123,29 @@ export async function createInvoiceFromQuotation(formData: FormData) {
   const [{ data: quotation }, { data: items }] = await Promise.all([
     supabase
       .from("quotations")
-      .select("id,project_id,client_id,subtotal,discount_amount,vat_rate,vat_amount,total,terms_en,terms_ar")
+      .select("id,project_id,client_id,subtotal,terms_en,terms_ar")
       .eq("owner_id", user.id)
-      .eq("id", parsed.id)
+      .eq("id", parsed.data.quotationId)
       .single(),
     supabase
       .from("quotation_items")
       .select("id,description,quantity,unit,unit_rate,total,sort_order")
       .eq("owner_id", user.id)
-      .eq("quotation_id", parsed.id)
+      .eq("quotation_id", parsed.data.quotationId)
       .is("deleted_at", null)
       .order("sort_order")
   ]);
 
   if (!quotation) {
-    redirect(`/quotations/${parsed.id}`);
+    return { ok: false, error: "Quotation not found." };
   }
+
+  const subtotal = Number(quotation.subtotal);
+  const discountAmount = Math.min(parsed.data.discountAmount, subtotal);
+  const vatRate = parsed.data.vatRate;
+  const vatAmount = getVatAmount(subtotal - discountAmount, vatRate);
+  const total = getDocumentTotal(subtotal, vatRate, discountAmount);
+  const depositAmount = Math.min(parsed.data.depositAmount, total);
 
   const { data: invoice } = await supabase
     .from("invoices")
@@ -124,11 +156,14 @@ export async function createInvoiceFromQuotation(formData: FormData) {
       quotation_id: quotation.id,
       invoice_number: `INV-${Date.now().toString().slice(-6)}`,
       status: "draft",
-      subtotal: quotation.subtotal,
-      discount_amount: quotation.discount_amount,
-      vat_rate: quotation.vat_rate,
-      vat_amount: quotation.vat_amount,
-      total: quotation.total,
+      issue_date: parsed.data.issueDate,
+      due_date: parsed.data.dueDate || null,
+      subtotal,
+      discount_amount: discountAmount,
+      vat_rate: vatRate,
+      vat_amount: vatAmount,
+      total,
+      deposit_amount: depositAmount,
       terms_en: quotation.terms_en,
       terms_ar: quotation.terms_ar
     })
@@ -136,7 +171,7 @@ export async function createInvoiceFromQuotation(formData: FormData) {
     .single();
 
   if (!invoice) {
-    redirect(`/quotations/${parsed.id}`);
+    return { ok: false, error: "Failed to create invoice." };
   }
 
   if (items?.length) {

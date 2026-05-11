@@ -42,6 +42,7 @@ export type Invoice = {
   total: number;
   paidAmount: number;
   balanceDue: number;
+  depositAmount: number;
   termsEn?: string | null;
   termsAr?: string | null;
   notes?: string | null;

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Download, ReceiptText } from "lucide-react";
 import type { Route } from "next";
-import { createInvoiceFromQuotation } from "@/features/documents/actions";
+import { CreateInvoiceSheet } from "@/features/documents/components/create-invoice-sheet";
+import { RecordPaymentSheet } from "@/features/documents/components/record-payment-sheet";
 import { SharePdfButton } from "@/features/documents/components/share-pdf-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,10 +63,16 @@ export function DocumentDetail(props: Props) {
           </div>
           <SharePdfButton exportPath={exportPath} number={number} kind={kind} appUrl={appUrl} />
           {kind === "quotation" ? (
-            <form action={createInvoiceFromQuotation}>
-              <input type="hidden" name="quotationId" value={document.id} />
-              <Button className="w-full">Convert to invoice</Button>
-            </form>
+            <CreateInvoiceSheet
+              quotationId={document.id}
+              subtotal={document.subtotal}
+              discountAmount={document.discountAmount}
+              vatRate={document.vatRate}
+              total={document.total}
+            />
+          ) : null}
+          {kind === "invoice" && !["paid", "cancelled"].includes(document.status) && document.balanceDue > 0 ? (
+            <RecordPaymentSheet invoiceId={document.id} balanceDue={document.balanceDue} />
           ) : null}
         </CardContent>
       </Card>
@@ -119,17 +126,30 @@ export function DocumentDetail(props: Props) {
 }
 
 function Totals({ document }: { document: Quotation | Invoice }) {
+  const isInvoice = "balanceDue" in document;
+  const inv = isInvoice ? document : null;
+
   return (
     <div className="space-y-2 rounded-md bg-secondary p-3 text-sm">
       <Row label="Subtotal" value={formatMoney(document.subtotal)} />
       {document.discountAmount > 0 ? (
         <Row label="Discount" value={`- ${formatMoney(document.discountAmount)}`} />
       ) : null}
-      {"balanceDue" in document && document.paidAmount > 0 ? (
-        <Row label="Paid" value={formatMoney(document.paidAmount)} />
+
+      {inv && inv.depositAmount > 0 && inv.paidAmount === 0 ? (
+        <>
+          <div className="my-1 border-t border-border" />
+          <Row label="First payment due" value={formatMoney(inv.depositAmount)} bold />
+          <Row label="Balance on completion" value={formatMoney(inv.total - inv.depositAmount)} />
+        </>
       ) : null}
-      {"balanceDue" in document ? (
-        <Row label="Balance due" value={formatMoney(document.balanceDue)} bold />
+
+      {inv && inv.paidAmount > 0 ? (
+        <>
+          <div className="my-1 border-t border-border" />
+          <Row label="Paid" value={formatMoney(inv.paidAmount)} />
+          <Row label="Balance due" value={formatMoney(inv.balanceDue)} bold />
+        </>
       ) : null}
     </div>
   );

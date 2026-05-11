@@ -47,6 +47,7 @@ export const demoInvoices: Invoice[] = [
     total: getDocumentTotal(boq.subtotal, vatRate),
     paidAmount: 12000,
     balanceDue: getDocumentTotal(boq.subtotal, vatRate) - 12000,
+    depositAmount: 0,
     termsEn: "Please transfer to the bank details listed in the company profile.",
     termsAr: "يرجى التحويل إلى الحساب البنكي الموضح في ملف الشركة.",
     notes: "Advance invoice.",

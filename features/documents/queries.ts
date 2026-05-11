@@ -38,6 +38,7 @@ type InvoiceRow = {
   total: number | string;
   paid_amount: number | string;
   balance_due: number | string;
+  deposit_amount: number | string;
   terms_en: string | null;
   terms_ar: string | null;
   notes: string | null;
@@ -181,7 +182,7 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
     supabase
       .from("invoices")
       .select(
-        "id,invoice_number,project_id,quotation_id,status,issue_date,due_date,subtotal,discount_amount,vat_rate,vat_amount,total,paid_amount,balance_due,terms_en,terms_ar,notes,projects(name,clients(name))"
+        "id,invoice_number,project_id,quotation_id,status,issue_date,due_date,subtotal,discount_amount,vat_rate,vat_amount,total,paid_amount,balance_due,deposit_amount,terms_en,terms_ar,notes,projects(name,clients(name))"
       )
       .eq("owner_id", user.id)
       .eq("id", id)
@@ -246,6 +247,7 @@ function mapInvoice(row: InvoiceRow, itemRows: ItemRow[]): Invoice {
     total: Number(row.total),
     paidAmount: Number(row.paid_amount),
     balanceDue: Number(row.balance_due),
+    depositAmount: Number(row.deposit_amount ?? 0),
     termsEn: row.terms_en,
     termsAr: row.terms_ar,
     notes: row.notes,
