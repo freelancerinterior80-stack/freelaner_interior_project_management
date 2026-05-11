@@ -3,7 +3,7 @@ import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register"
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Freelancerinterior Operation",
+  title: "Freelancerinterior",
   description: "Mobile-first project control for interior and construction work.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {

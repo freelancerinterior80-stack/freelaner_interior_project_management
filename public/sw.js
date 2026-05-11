@@ -1,4 +1,4 @@
-const CACHE_NAME = "freelaner-operations-v1";
+const CACHE_NAME = "freelancerinterior-v1";
 const APP_SHELL = ["/offline", "/manifest.webmanifest", "/icons/icon-192.svg", "/icons/icon-512.svg"];
 
 self.addEventListener("install", (event) => {

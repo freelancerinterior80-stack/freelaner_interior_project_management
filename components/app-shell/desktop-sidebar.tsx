@@ -32,8 +32,7 @@ export function DesktopSidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-border/70 bg-card px-4 py-6 md:flex">
       <div className="mb-8">
-        <p className="text-sm font-medium text-wood-700">Freelancerinterior</p>
-        <h1 className="text-xl font-semibold text-charcoal-900">Operation</h1>
+        <h1 className="text-xl font-semibold text-charcoal-900">Freelancerinterior</h1>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto">
         {items.map((item) => (

@@ -1,6 +1,6 @@
 {
-  "name": "Freelaner Operations",
-  "short_name": "Freelaner",
+  "name": "Freelancerinterior",
+  "short_name": "Freelancerinterior",
   "description": "Mobile-first owner control for interior and construction projects.",
   "start_url": "/dashboard",
   "display": "standalone",

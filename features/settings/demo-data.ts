@@ -3,7 +3,7 @@ import type { AppSettings } from "@/features/settings/types";
 export const demoSettings: AppSettings = {
   companyName: "Freelancerinterior Operation",
   companyPhone: "+966500000000",
-  companyEmail: "hello@freelaner.example",
+  companyEmail: "hello@freelancerinterior.example",
   companyAddress: "Riyadh, Saudi Arabia",
   vatNumber: "300000000000003",
   vatRate: 0.15,

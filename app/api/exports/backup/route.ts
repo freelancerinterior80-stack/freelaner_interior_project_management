@@ -83,7 +83,7 @@ export async function GET() {
   return backupResponse(
     {
       exportedAt,
-      app: "freelaner-interior-project-management",
+      app: "freelancerinterior",
       schemaVersion: 1,
       source: "supabase",
       owner: {
@@ -115,7 +115,7 @@ async function fetchOwnerTable(table: OwnerTable, ownerId: string) {
 function buildDemoBackup(exportedAt: string): BackupPayload {
   return {
     exportedAt,
-    app: "freelaner-interior-project-management",
+    app: "freelancerinterior",
     schemaVersion: 1,
     source: "demo",
     owner: {
@@ -147,7 +147,7 @@ function backupResponse(payload: BackupPayload, exportedAt: string) {
   return new Response(JSON.stringify(payload, null, 2), {
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "content-disposition": `attachment; filename="freelaner-backup-${date}.json"`
+      "content-disposition": `attachment; filename="freelancerinterior-backup-${date}.json"`
     }
   });
 }
