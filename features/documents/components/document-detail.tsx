@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Download, MessageCircle, ReceiptText } from "lucide-react";
+import { Download, ReceiptText } from "lucide-react";
 import type { Route } from "next";
 import { createInvoiceFromQuotation } from "@/features/documents/actions";
+import { SharePdfButton } from "@/features/documents/components/share-pdf-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +23,7 @@ export function DocumentDetail(props: Props) {
   const { document, kind } = props;
   const number = kind === "quotation" ? document.quotationNumber : document.invoiceNumber;
   const exportPath = `/api/exports/${kind}/${document.id}`;
-  const shareText = `${kind === "quotation" ? "Quotation" : "Invoice"} ${number}: ${exportPath}`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
   return (
     <div className="space-y-5">
@@ -59,12 +60,7 @@ export function DocumentDetail(props: Props) {
               </Link>
             </Button>
           </div>
-          <Button asChild variant="secondary" className="w-full">
-            <Link href={`https://wa.me/?text=${encodeURIComponent(shareText)}`}>
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp
-            </Link>
-          </Button>
+          <SharePdfButton exportPath={exportPath} number={number} kind={kind} appUrl={appUrl} />
           {kind === "quotation" ? (
             <form action={createInvoiceFromQuotation}>
               <input type="hidden" name="quotationId" value={document.id} />

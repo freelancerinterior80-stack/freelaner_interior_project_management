@@ -157,15 +157,23 @@ function SignatureField({ currentUrl, currentPath }: { currentUrl?: string | nul
   const hiddenInputRef = useRef<HTMLInputElement>(null);
   const [drawing, setDrawing] = useState(false);
   const [hasDrawing, setHasDrawing] = useState(false);
+  // Preview data URL after drawing — shown instead of the old saved image until form is saved
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const startDrawing = useCallback(() => {
     setDrawing(true);
     setHasDrawing(false);
     setTimeout(() => {
-      if (canvasRef.current) {
-        padRef.current = new SignaturePad(canvasRef.current, { penColor: "#171717" });
-        padRef.current.addEventListener("endStroke", () => setHasDrawing(true));
-      }
+      if (!canvasRef.current) return;
+      const canvas = canvasRef.current;
+      // Scale canvas internal resolution to physical pixels so drawing is crisp on HiDPI/Retina screens
+      const dpr = Math.max(window.devicePixelRatio || 1, 1);
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = (rect.width || 400) * dpr;
+      canvas.height = (rect.height || 120) * dpr;
+      canvas.getContext("2d")?.scale(dpr, dpr);
+      padRef.current = new SignaturePad(canvas, { penColor: "#171717" });
+      padRef.current.addEventListener("endStroke", () => setHasDrawing(true));
     }, 50);
   }, []);
 
@@ -178,24 +186,27 @@ function SignatureField({ currentUrl, currentPath }: { currentUrl?: string | nul
   const savePad = useCallback(() => {
     if (!padRef.current || padRef.current.isEmpty()) return;
     const dataUrl = padRef.current.toDataURL("image/png");
-    // Convert data URL to a File and attach to hidden input via DataTransfer
-    fetch(dataUrl)
-      .then((r) => r.blob())
-      .then((blob) => {
-        const file = new File([blob], "signature.png", { type: "image/png" });
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        if (hiddenInputRef.current) {
-          hiddenInputRef.current.files = dt.files;
-        }
-        setDrawing(false);
-        setHasDrawing(true);
-      });
+    // Synchronous base64→Blob — avoids fetch(data:) which is blocked by strict CSP in some browsers
+    const [header, base64] = dataUrl.split(",");
+    const mime = header.match(/:(.*?);/)?.[1] ?? "image/png";
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: mime });
+    const file = new File([blob], "signature.png", { type: "image/png" });
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    if (hiddenInputRef.current) hiddenInputRef.current.files = dt.files;
+    setPreviewUrl(dataUrl);
+    setDrawing(false);
+    setHasDrawing(true);
   }, []);
 
   useEffect(() => {
     return () => { padRef.current?.off(); };
   }, []);
+
+  const displayUrl = previewUrl ?? currentUrl;
 
   return (
     <div className="space-y-2">
@@ -203,10 +214,10 @@ function SignatureField({ currentUrl, currentPath }: { currentUrl?: string | nul
         <PenLine className="h-3.5 w-3.5 text-wood-700" /> Signature
       </Label>
 
-      {currentUrl && !drawing ? (
+      {displayUrl && !drawing ? (
         <div className="rounded-md border border-input bg-card p-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={currentUrl} alt="Saved signature" className="h-12 object-contain" />
+          <img src={displayUrl} alt="Saved signature" className="h-12 object-contain" />
           <button
             type="button"
             onClick={startDrawing}
@@ -214,6 +225,9 @@ function SignatureField({ currentUrl, currentPath }: { currentUrl?: string | nul
           >
             <PenLine className="h-3 w-3" /> Redraw signature
           </button>
+          {previewUrl ? (
+            <p className="mt-1 text-xs text-green-600">Signature ready — click Save settings to apply.</p>
+          ) : null}
         </div>
       ) : !drawing ? (
         <div className="rounded-md border border-dashed border-input bg-card p-4 text-center">
@@ -233,10 +247,8 @@ function SignatureField({ currentUrl, currentPath }: { currentUrl?: string | nul
           <p className="text-xs text-muted-foreground">Draw your signature below</p>
           <canvas
             ref={canvasRef}
-            width={400}
-            height={120}
-            className="w-full rounded border border-input bg-white touch-none"
-            style={{ cursor: "crosshair" }}
+            className="h-28 w-full rounded border border-input bg-white"
+            style={{ touchAction: "none", cursor: "crosshair" }}
           />
           <div className="flex gap-2">
             <Button type="button" size="sm" variant="secondary" onClick={clearPad}>
@@ -246,17 +258,12 @@ function SignatureField({ currentUrl, currentPath }: { currentUrl?: string | nul
               <Save className="h-3.5 w-3.5" /> Use this signature
             </Button>
           </div>
-          {hasDrawing && !drawing ? null : (
-            <p className="text-xs text-green-600">
-              {hasDrawing ? "Signature ready — click Save settings to apply." : ""}
-            </p>
-          )}
         </div>
       ) : null}
 
-      {/* Hidden file input — populated from canvas drawing OR kept empty if using existing */}
+      {/* Hidden file input — populated from canvas drawing via DataTransfer */}
       <input ref={hiddenInputRef} id="signature" name="signature" type="file" accept="image/*" className="hidden" />
-      {!drawing && !currentPath ? (
+      {!drawing && !previewUrl && !currentPath ? (
         <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
           <Upload className="h-3 w-3" />
           <span>Or upload a signature image</span>
