@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/guards";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -37,6 +36,14 @@ export type SettingsActionState = {
 };
 
 export async function saveSettings(_: SettingsActionState, formData: FormData): Promise<SettingsActionState> {
+  try {
+    return await doSaveSettings(formData);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "An unexpected error occurred. Please try again." };
+  }
+}
+
+async function doSaveSettings(formData: FormData): Promise<SettingsActionState> {
   const parsed = settingsSchema.safeParse({
     companyName: formData.get("companyName"),
     companyPhone: formData.get("companyPhone") || undefined,
@@ -65,7 +72,7 @@ export async function saveSettings(_: SettingsActionState, formData: FormData): 
   }
 
   if (!isSupabaseConfigured()) {
-    redirect("/settings");
+    return { ok: false, error: "Database not configured. Add Supabase environment variables to save settings." };
   }
 
   const user = await requireUser();
@@ -139,7 +146,7 @@ export async function saveSettings(_: SettingsActionState, formData: FormData): 
   revalidatePath("/dashboard");
   revalidatePath("/quotations");
   revalidatePath("/invoices");
-  redirect("/settings");
+  return { ok: true };
 }
 
 async function uploadOptionalFile(
