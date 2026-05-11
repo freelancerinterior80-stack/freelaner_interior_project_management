@@ -136,7 +136,13 @@ export function SettingsForm({ settings }: { settings: AppSettings }) {
         </CardContent>
       </Card>
 
+      {state.warning ? (
+        <p className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">{state.warning}</p>
+      ) : null}
       {state.error ? <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p> : null}
+      {state.ok && !state.warning ? (
+        <p className="rounded-md bg-green-50 border border-green-200 p-3 text-sm text-green-800">Settings saved successfully.</p>
+      ) : null}
       <Button className="sticky bottom-24 w-full md:static" size="lg" disabled={pending}>
         <Save className="h-4 w-4" />
         {pending ? "Saving..." : "Save settings"}

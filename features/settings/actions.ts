@@ -33,6 +33,7 @@ const settingsSchema = z.object({
 export type SettingsActionState = {
   ok: boolean;
   error?: string;
+  warning?: string;
 };
 
 export async function saveSettings(_: SettingsActionState, formData: FormData): Promise<SettingsActionState> {
@@ -69,14 +70,21 @@ export async function saveSettings(_: SettingsActionState, formData: FormData): 
 
   const user = await requireUser();
   const supabase = await createSupabaseServerClient();
+
+  // Upload files — failures are non-fatal (settings save continues without them)
   let logoPath: string | null = null;
   let signaturePath: string | null = null;
+  let uploadWarning: string | undefined;
 
-  try {
-    logoPath = await uploadOptionalFile(formData.get("logo"), user.id, "logo");
-    signaturePath = await uploadOptionalFile(formData.get("signature"), user.id, "signature");
-  } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Could not upload file." };
+  const logoResult = await uploadOptionalFile(formData.get("logo"), user.id, "logo");
+  const signatureResult = await uploadOptionalFile(formData.get("signature"), user.id, "signature");
+
+  if (logoResult.path) logoPath = logoResult.path;
+  if (signatureResult.path) signaturePath = signatureResult.path;
+
+  if (logoResult.error || signatureResult.error) {
+    const fileErrors = [logoResult.error, signatureResult.error].filter(Boolean).join(" | ");
+    uploadWarning = `Settings saved but file upload failed: ${fileErrors}. Create the "project-files" storage bucket in Supabase first.`;
   }
 
   const payload = {
@@ -109,8 +117,22 @@ export async function saveSettings(_: SettingsActionState, formData: FormData): 
     supabase.from("profiles").update({ preferred_language: parsed.data.preferredLanguage }).eq("id", user.id)
   ]);
 
-  if (settingsError || profileError) {
-    return { ok: false, error: settingsError?.message ?? profileError?.message ?? "Could not save settings." };
+  if (settingsError) {
+    // Detect the common case: migration not run yet
+    const hint = settingsError.message.includes("column")
+      ? " (Run the SQL migration in Supabase first.)"
+      : "";
+    return { ok: false, error: settingsError.message + hint };
+  }
+
+  if (profileError) {
+    return { ok: false, error: profileError.message };
+  }
+
+  // If there was a file upload warning, return it instead of redirecting so user can see it
+  if (uploadWarning) {
+    revalidatePath("/settings");
+    return { ok: true, warning: uploadWarning };
   }
 
   revalidatePath("/settings");
@@ -120,21 +142,29 @@ export async function saveSettings(_: SettingsActionState, formData: FormData): 
   redirect("/settings");
 }
 
-async function uploadOptionalFile(file: FormDataEntryValue | null, userId: string, kind: "logo" | "signature") {
+async function uploadOptionalFile(
+  file: FormDataEntryValue | null,
+  userId: string,
+  kind: "logo" | "signature"
+): Promise<{ path: string | null; error: string | null }> {
   if (!(file instanceof File) || file.size === 0) {
-    return null;
+    return { path: null, error: null };
   }
 
-  const supabase = await createSupabaseServerClient();
-  const path = `${userId}/settings/${kind}-${Date.now()}-${file.name}`;
-  const { error } = await supabase.storage.from("project-files").upload(path, file, {
-    contentType: file.type,
-    upsert: false
-  });
+  try {
+    const supabase = await createSupabaseServerClient();
+    const path = `${userId}/settings/${kind}-${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("project-files").upload(path, file, {
+      contentType: file.type,
+      upsert: false
+    });
 
-  if (error) {
-    throw new Error(error.message);
+    if (error) {
+      return { path: null, error: error.message };
+    }
+
+    return { path, error: null };
+  } catch (err) {
+    return { path: null, error: err instanceof Error ? err.message : "Upload failed" };
   }
-
-  return path;
 }
