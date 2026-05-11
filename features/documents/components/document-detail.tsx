@@ -49,16 +49,16 @@ export function DocumentDetail(props: Props) {
           <Totals document={document} />
           <div className="grid grid-cols-2 gap-3">
             <Button asChild variant="secondary">
-              <Link href={exportPath as Route} target="_blank">
+              <a href={exportPath} download={`${number}.pdf`}>
                 <Download className="h-4 w-4" />
                 PDF (EN)
-              </Link>
+              </a>
             </Button>
             <Button asChild variant="secondary">
-              <Link href={`${exportPath}?lang=ar` as Route} target="_blank">
+              <a href={`${exportPath}?lang=ar`} download={`${number}-ar.pdf`}>
                 <Download className="h-4 w-4" />
                 PDF (عربي)
-              </Link>
+              </a>
             </Button>
           </div>
           <SharePdfButton exportPath={exportPath} number={number} kind={kind} appUrl={appUrl} />
@@ -139,8 +139,8 @@ function Totals({ document }: { document: Quotation | Invoice }) {
       {inv && inv.depositAmount > 0 && inv.paidAmount === 0 ? (
         <>
           <div className="my-1 border-t border-border" />
-          <Row label="First payment due" value={formatMoney(inv.depositAmount)} bold />
-          <Row label="Balance on completion" value={formatMoney(inv.total - inv.depositAmount)} />
+          <Row label="Advance payment" value={formatMoney(inv.depositAmount)} bold />
+          <Row label="Remaining payment" value={formatMoney(inv.total - inv.depositAmount)} />
         </>
       ) : null}
 

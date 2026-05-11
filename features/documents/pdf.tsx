@@ -26,6 +26,9 @@ const EN: Record<string, string> = {
   discount: "Discount",
   vat: "VAT",
   paid: "Paid",
+  advancePayment: "Advance Payment",
+  remainingPayment: "Remaining Payment",
+  paymentSchedule: "Payment Schedule",
   termsTitle: "Terms & Conditions",
   bankDetails: "Bank Details",
   authorizedSignature: "Authorized Signature",
@@ -38,6 +41,7 @@ const EN: Record<string, string> = {
   validUntil: "Valid Until",
   dueDate: "Due Date",
   quotationTotal: "Quotation Total",
+  invoiceTotal: "Invoice Total",
   balanceDue: "Balance Due",
   boqTotal: "BOQ Total"
 };
@@ -52,6 +56,9 @@ const AR: Record<string, string> = {
   discount: "الخصم",
   vat: "ضريبة القيمة المضافة",
   paid: "المدفوع",
+  advancePayment: "الدفعة المقدمة",
+  remainingPayment: "المبلغ المتبقي",
+  paymentSchedule: "جدول الدفع",
   termsTitle: "الشروط والأحكام",
   bankDetails: "تفاصيل البنك",
   authorizedSignature: "التوقيع المخول",
@@ -64,6 +71,7 @@ const AR: Record<string, string> = {
   validUntil: "صالح حتى",
   dueDate: "تاريخ الاستحقاق",
   quotationTotal: "إجمالي عرض السعر",
+  invoiceTotal: "إجمالي الفاتورة",
   balanceDue: "المبلغ المستحق",
   boqTotal: "إجمالي الكميات"
 };
@@ -288,6 +296,46 @@ const styles = StyleSheet.create({
     width: 140
   },
   signerName: { fontSize: 8, color: "#171717", fontWeight: 700 },
+  paymentScheduleBox: {
+    marginTop: 14,
+    padding: 10,
+    backgroundColor: BRAND_LIGHT,
+    borderRadius: 4,
+    borderLeft: `3px solid ${BRAND}`
+  },
+  paymentScheduleBoxAr: {
+    marginTop: 14,
+    padding: 10,
+    backgroundColor: BRAND_LIGHT,
+    borderRadius: 4,
+    borderRight: `3px solid ${BRAND}`
+  },
+  paymentScheduleTitle: {
+    fontSize: 8,
+    fontWeight: 700,
+    color: BRAND,
+    marginBottom: 6,
+    textTransform: "uppercase"
+  },
+  paymentScheduleTitleAr: {
+    fontSize: 8,
+    fontWeight: 700,
+    color: BRAND,
+    marginBottom: 6,
+    textAlign: "right"
+  },
+  paymentScheduleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4
+  },
+  paymentScheduleRowAr: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    marginBottom: 4
+  },
+  paymentScheduleLabel: { fontSize: 9, color: MUTED },
+  paymentScheduleValue: { fontSize: 9, fontWeight: 700, color: BRAND },
   terms: {
     marginTop: 16,
     padding: 12,
@@ -413,15 +461,22 @@ export function InvoicePdf({
   const ar = language === "ar";
   const cur = settings?.currency;
 
+  const hasPaid = invoice.paidAmount > 0;
+  const hasDeposit = invoice.depositAmount > 0;
+
   const totalsRows: [string, string][] = [
     [t("subtotal", language), money(invoice.subtotal, cur)]
   ];
   if (invoice.discountAmount > 0) {
     totalsRows.push([t("discount", language), `- ${money(invoice.discountAmount, cur)}`]);
   }
-  if (invoice.paidAmount > 0) {
+  if (hasPaid) {
     totalsRows.push([t("paid", language), money(invoice.paidAmount, cur)]);
   }
+
+  // Final row: "Balance Due" only when payments exist, otherwise "Invoice Total"
+  const finalLabel = hasPaid ? t("balanceDue", language) : t("invoiceTotal", language);
+  const finalValue = hasPaid ? money(invoice.balanceDue, cur) : money(invoice.total, cur);
 
   return (
     <Document>
@@ -439,10 +494,19 @@ export function InvoicePdf({
         <ItemsTable items={invoice.items} currency={cur} language={language} />
         <TotalsBlock
           rows={totalsRows}
-          finalLabel={t("balanceDue", language)}
-          finalValue={money(invoice.balanceDue, cur)}
+          finalLabel={finalLabel}
+          finalValue={finalValue}
           ar={ar}
         />
+        {hasDeposit && !hasPaid ? (
+          <PaymentScheduleSection
+            depositAmount={invoice.depositAmount}
+            total={invoice.total}
+            currency={cur}
+            language={language}
+            ar={ar}
+          />
+        ) : null}
         <FooterRow settings={settings} language={language} showBank={true} />
         <TermsSection
           text={ar ? (invoice.termsAr ?? settings?.defaultTermsAr) : (invoice.termsEn ?? settings?.defaultTermsEn)}
@@ -622,6 +686,41 @@ function FooterRow({
         // Bank on LEFT, signature on RIGHT
         <>{bankBox}{signatureBox}</>
       )}
+    </View>
+  );
+}
+
+function PaymentScheduleSection({
+  depositAmount,
+  total,
+  currency,
+  language,
+  ar
+}: {
+  depositAmount: number;
+  total: number;
+  currency?: string;
+  language: Language;
+  ar: boolean;
+}) {
+  if (depositAmount <= 0) return null;
+  return (
+    <View style={ar ? styles.paymentScheduleBoxAr : styles.paymentScheduleBox}>
+      <Text style={ar ? [styles.paymentScheduleTitleAr, styles.arabicFont] : styles.paymentScheduleTitle}>
+        {t("paymentSchedule", language)}
+      </Text>
+      <View style={ar ? styles.paymentScheduleRowAr : styles.paymentScheduleRow}>
+        <Text style={[styles.paymentScheduleLabel, ar ? styles.arabicFont : {}]}>
+          {t("advancePayment", language)}
+        </Text>
+        <Text style={styles.paymentScheduleValue}>{money(depositAmount, currency)}</Text>
+      </View>
+      <View style={ar ? styles.paymentScheduleRowAr : styles.paymentScheduleRow}>
+        <Text style={[styles.paymentScheduleLabel, ar ? styles.arabicFont : {}]}>
+          {t("remainingPayment", language)}
+        </Text>
+        <Text style={styles.paymentScheduleValue}>{money(total - depositAmount, currency)}</Text>
+      </View>
     </View>
   );
 }

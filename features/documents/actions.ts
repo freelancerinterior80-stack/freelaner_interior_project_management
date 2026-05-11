@@ -147,7 +147,7 @@ export async function createInvoiceFromQuotation(
   const total = getDocumentTotal(subtotal, vatRate, discountAmount);
   const depositAmount = Math.min(parsed.data.depositAmount, total);
 
-  const { data: invoice } = await supabase
+  const { data: invoice, error: invoiceError } = await supabase
     .from("invoices")
     .insert({
       owner_id: user.id,
@@ -170,8 +170,12 @@ export async function createInvoiceFromQuotation(
     .select("id")
     .single();
 
-  if (!invoice) {
-    return { ok: false, error: "Failed to create invoice." };
+  if (invoiceError || !invoice) {
+    const msg = invoiceError?.message ?? "Failed to create invoice.";
+    const hint = msg.includes("deposit_amount")
+      ? `${msg} — Run this in Supabase SQL Editor: ALTER TABLE invoices ADD COLUMN IF NOT EXISTS deposit_amount numeric(14,2) not null default 0;`
+      : msg;
+    return { ok: false, error: hint };
   }
 
   if (items?.length) {

@@ -82,9 +82,9 @@ export function CreateInvoiceSheet({ quotationId, subtotal, discountAmount, vatR
             </div>
           </div>
 
-          {/* Deposit */}
+          {/* Advance payment */}
           <div className="space-y-2">
-            <Label htmlFor="ci-deposit">First payment amount (optional)</Label>
+            <Label htmlFor="ci-deposit">Advance payment</Label>
             <Input
               id="ci-deposit"
               type="number"
@@ -92,27 +92,25 @@ export function CreateInvoiceSheet({ quotationId, subtotal, discountAmount, vatR
               min="0"
               max={total}
               value={deposit === 0 ? "" : deposit}
-              placeholder="e.g. 159.000"
+              placeholder="Enter advance amount (optional)"
               onChange={(e) => {
                 const v = parseFloat(e.target.value);
                 setDeposit(isNaN(v) ? 0 : Math.min(v, total));
               }}
             />
 
-            {deposit > 0 ? (
-              <div className="space-y-1.5 rounded-md bg-amber-50 border border-amber-200 p-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-amber-800 font-medium">First payment due now</span>
-                  <span className="font-semibold text-amber-900">{formatMoney(deposit)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-amber-800">Balance on completion</span>
-                  <span className="font-semibold text-amber-900">{formatMoney(balance)}</span>
-                </div>
+            <div className="space-y-1.5 rounded-md bg-secondary p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Advance payment</span>
+                <span className="font-semibold text-charcoal-900">
+                  {deposit > 0 ? formatMoney(deposit) : "—"}
+                </span>
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">Leave empty if full amount is due at once.</p>
-            )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Remaining payment</span>
+                <span className="font-semibold text-charcoal-900">{formatMoney(balance)}</span>
+              </div>
+            </div>
           </div>
 
           {state.error ? (

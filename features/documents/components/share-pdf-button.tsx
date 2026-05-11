@@ -14,31 +14,40 @@ interface Props {
 export function SharePdfButton({ exportPath, number, kind, appUrl }: Props) {
   const [sharing, setSharing] = useState(false);
   const label = kind === "quotation" ? "Quotation" : "Invoice";
+  const absoluteUrl = `${appUrl.replace(/\/$/, "")}${exportPath}`;
 
   async function handleShare() {
     setSharing(true);
-    let sharedViaFile = false;
     try {
+      // Tier 1: share the actual PDF file (Android Chrome, iOS Safari 15.1+)
       const res = await fetch(exportPath);
       if (res.ok) {
         const blob = await res.blob();
         const file = new File([blob], `${number}.pdf`, { type: "application/pdf" });
-        if (typeof navigator.canShare === "function" && navigator.canShare({ files: [file] })) {
+        if (navigator.canShare?.({ files: [file] })) {
           await navigator.share({ files: [file], title: `${label} ${number}` });
-          sharedViaFile = true;
           return;
         }
       }
+
+      // Tier 2: share via native share sheet (URL only — iOS Safari, Android)
+      if (typeof navigator.share === "function") {
+        await navigator.share({
+          url: absoluteUrl,
+          title: `${label} ${number}`,
+          text: `${label} ${number}`
+        });
+        return;
+      }
     } catch (err) {
-      // AbortError = user cancelled the share sheet — do nothing
+      // User dismissed the share sheet — do nothing
       if (err instanceof DOMException && err.name === "AbortError") return;
-      // Other errors (fetch failed, share failed) → fall through to link fallback
+      // Any other error falls through to the WhatsApp link below
     } finally {
       setSharing(false);
     }
-    if (sharedViaFile) return;
-    // Fallback: send an absolute link via WhatsApp text
-    const absoluteUrl = `${appUrl.replace(/\/$/, "")}${exportPath}`;
+
+    // Tier 3: open WhatsApp with the document link (desktop / unsupported browsers)
     const text = `${label} ${number}\n${absoluteUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   }
@@ -46,7 +55,7 @@ export function SharePdfButton({ exportPath, number, kind, appUrl }: Props) {
   return (
     <Button variant="secondary" className="w-full" onClick={handleShare} disabled={sharing}>
       <MessageCircle className="h-4 w-4" />
-      {sharing ? "Preparing PDF…" : "WhatsApp"}
+      {sharing ? "Preparing…" : "WhatsApp"}
     </Button>
   );
 }

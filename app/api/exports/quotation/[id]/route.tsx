@@ -23,7 +23,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return new Response(new Uint8Array(buffer), {
       headers: {
         "content-type": "application/pdf",
-        "content-disposition": `inline; filename="${quotation.quotationNumber}${lang === "ar" ? "-ar" : ""}.pdf"`
+        "content-disposition": `attachment; filename="${quotation.quotationNumber}${lang === "ar" ? "-ar" : ""}.pdf"`
       }
     });
   } catch (error) {
