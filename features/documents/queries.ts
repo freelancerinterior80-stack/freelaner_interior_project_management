@@ -1,5 +1,6 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { assertNoQueryError } from "@/lib/supabase/query-error";
 import { requireUser } from "@/lib/auth/guards";
 import { demoInvoices, demoQuotations } from "@/features/documents/demo-data";
 import type { DocumentItem, DocumentSummary, Invoice, Quotation } from "@/features/documents/types";
@@ -76,11 +77,9 @@ export async function getQuotationSummaries(): Promise<DocumentSummary[]> {
     .is("deleted_at", null)
     .order("issue_date", { ascending: false });
 
-  if (error || !data) {
-    return [];
-  }
+  assertNoQueryError(error, "quotations");
 
-  return ((data as unknown) as QuotationRow[]).map((row) => {
+  return ((data ?? []) as unknown as QuotationRow[]).map((row) => {
     const client = Array.isArray(row.projects?.clients)
       ? row.projects?.clients[0]
       : row.projects?.clients;
@@ -118,11 +117,9 @@ export async function getInvoiceSummaries(): Promise<DocumentSummary[]> {
     .is("deleted_at", null)
     .order("issue_date", { ascending: false });
 
-  if (error || !data) {
-    return [];
-  }
+  assertNoQueryError(error, "invoices");
 
-  return ((data as unknown) as InvoiceRow[]).map((row) => {
+  return ((data ?? []) as unknown as InvoiceRow[]).map((row) => {
     const client = Array.isArray(row.projects?.clients)
       ? row.projects?.clients[0]
       : row.projects?.clients;
@@ -145,7 +142,10 @@ export async function getQuotationById(id: string): Promise<Quotation | null> {
 
   const user = await requireUser();
   const supabase = await createSupabaseServerClient();
-  const [{ data: quotation }, { data: items }] = await Promise.all([
+  const [
+    { data: quotation, error: quotationError },
+    { data: items, error: itemsError }
+  ] = await Promise.all([
     supabase
       .from("quotations")
       .select(
@@ -164,6 +164,9 @@ export async function getQuotationById(id: string): Promise<Quotation | null> {
       .order("sort_order")
   ]);
 
+  assertNoQueryError(quotationError, "quotation");
+  assertNoQueryError(itemsError, "quotation items");
+
   if (!quotation) {
     return null;
   }
@@ -178,7 +181,10 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
 
   const user = await requireUser();
   const supabase = await createSupabaseServerClient();
-  const [{ data: invoice }, { data: items }] = await Promise.all([
+  const [
+    { data: invoice, error: invoiceError },
+    { data: items, error: itemsError }
+  ] = await Promise.all([
     supabase
       .from("invoices")
       .select(
@@ -196,6 +202,9 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
       .is("deleted_at", null)
       .order("sort_order")
   ]);
+
+  assertNoQueryError(invoiceError, "invoice");
+  assertNoQueryError(itemsError, "invoice items");
 
   if (!invoice) {
     return null;

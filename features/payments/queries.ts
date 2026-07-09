@@ -1,6 +1,7 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireUser } from "@/lib/auth/guards";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { assertNoQueryError } from "@/lib/supabase/query-error";
 import { demoPayments } from "@/features/payments/demo-data";
 import type { Payment } from "@/features/payments/types";
 
@@ -36,11 +37,9 @@ export async function getPayments(): Promise<Payment[]> {
     .is("deleted_at", null)
     .order("payment_date", { ascending: false });
 
-  if (error || !data) {
-    return [];
-  }
+  assertNoQueryError(error, "payments");
 
-  return ((data as unknown) as PaymentRow[]).map((row) => {
+  return ((data ?? []) as unknown as PaymentRow[]).map((row) => {
     const client = Array.isArray(row.projects?.clients)
       ? row.projects?.clients[0]
       : row.projects?.clients;

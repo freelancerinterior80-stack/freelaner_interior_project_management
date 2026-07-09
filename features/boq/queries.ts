@@ -1,5 +1,6 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { assertNoQueryError } from "@/lib/supabase/query-error";
 import { requireUser } from "@/lib/auth/guards";
 import { getProjects } from "@/features/projects/queries";
 import { demoBoqs, getDemoBoqSummaries } from "@/features/boq/demo-data";
@@ -40,18 +41,25 @@ export async function getBoqSummaries(): Promise<BoqSummary[]> {
 
   const user = await requireUser();
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("boqs")
-    .select("id,name,project_id,is_template,subtotal,projects(name,clients(name))")
-    .eq("owner_id", user.id)
-    .is("deleted_at", null)
-    .order("updated_at", { ascending: false });
+  const [{ data, error }, { data: itemRows, error: itemsError }] = await Promise.all([
+    supabase
+      .from("boqs")
+      .select("id,name,project_id,is_template,subtotal,projects(name,clients(name))")
+      .eq("owner_id", user.id)
+      .is("deleted_at", null)
+      .order("updated_at", { ascending: false }),
+    supabase.from("boq_items").select("boq_id").eq("owner_id", user.id).is("deleted_at", null)
+  ]);
 
-  if (error || !data) {
-    return getDemoBoqSummaries();
+  assertNoQueryError(error, "BOQ list");
+  assertNoQueryError(itemsError, "BOQ item counts");
+
+  const itemCounts = new Map<string, number>();
+  for (const item of (itemRows ?? []) as { boq_id: string }[]) {
+    itemCounts.set(item.boq_id, (itemCounts.get(item.boq_id) ?? 0) + 1);
   }
 
-  return ((data as unknown) as BoqRow[]).map((row) => {
+  return ((data ?? []) as unknown as BoqRow[]).map((row) => {
     const client = Array.isArray(row.projects?.clients)
       ? row.projects?.clients[0]
       : row.projects?.clients;
@@ -64,7 +72,7 @@ export async function getBoqSummaries(): Promise<BoqSummary[]> {
       clientName: client?.name ?? null,
       isTemplate: row.is_template,
       subtotal: Number(row.subtotal ?? 0),
-      itemCount: 0
+      itemCount: itemCounts.get(row.id) ?? 0
     };
   });
 }
@@ -77,7 +85,11 @@ export async function getBoqById(id: string): Promise<Boq | null> {
   const user = await requireUser();
   const supabase = await createSupabaseServerClient();
 
-  const [{ data: boq, error: boqError }, { data: categories }, { data: items }] = await Promise.all([
+  const [
+    { data: boq, error: boqError },
+    { data: categories, error: categoriesError },
+    { data: items, error: itemsError }
+  ] = await Promise.all([
     supabase
       .from("boqs")
       .select("id,name,project_id,is_template,subtotal,notes,projects(name,clients(name))")
@@ -101,7 +113,11 @@ export async function getBoqById(id: string): Promise<Boq | null> {
       .order("sort_order")
   ]);
 
-  if (boqError || !boq) {
+  assertNoQueryError(boqError, "BOQ");
+  assertNoQueryError(categoriesError, "BOQ categories");
+  assertNoQueryError(itemsError, "BOQ items");
+
+  if (!boq) {
     return null;
   }
 

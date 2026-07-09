@@ -1,5 +1,6 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { assertNoQueryError } from "@/lib/supabase/query-error";
 import { requireUser } from "@/lib/auth/guards";
 import { demoProjects } from "@/features/projects/demo-data";
 import { demoExpenses } from "@/features/expenses/demo-data";
@@ -16,7 +17,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const supabase = await createSupabaseServerClient();
   const projects = await getProjects();
 
-  const [{ data: payments }, { data: recentExpenses }, { data: allExpenses }, { data: materials }, { data: invoices }] = await Promise.all([
+  const [paymentsRes, recentExpensesRes, allExpensesRes, materialsRes, invoicesRes] = await Promise.all([
     supabase
       .from("payments")
       .select("amount,direction,status,payment_date")
@@ -46,6 +47,18 @@ export async function getDashboardData(): Promise<DashboardData> {
       .is("deleted_at", null)
       .gt("balance_due", 0)
   ]);
+
+  assertNoQueryError(paymentsRes.error, "dashboard payments");
+  assertNoQueryError(recentExpensesRes.error, "dashboard recent expenses");
+  assertNoQueryError(allExpensesRes.error, "dashboard expenses");
+  assertNoQueryError(materialsRes.error, "dashboard materials");
+  assertNoQueryError(invoicesRes.error, "dashboard outstanding invoices");
+
+  const { data: payments } = paymentsRes;
+  const { data: recentExpenses } = recentExpensesRes;
+  const { data: allExpenses } = allExpensesRes;
+  const { data: materials } = materialsRes;
+  const { data: invoices } = invoicesRes;
 
   const completedPayments = payments?.filter((p) => p.status === "completed") ?? [];
 

@@ -1,5 +1,6 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { assertNoQueryError } from "@/lib/supabase/query-error";
 import { requireUser } from "@/lib/auth/guards";
 import { demoProjects } from "@/features/projects/demo-data";
 import type { Project } from "@/features/projects/types";
@@ -37,11 +38,9 @@ export async function getProjects(): Promise<Project[]> {
     .is("deleted_at", null)
     .order("updated_at", { ascending: false });
 
-  if (error || !data) {
-    return demoProjects;
-  }
+  assertNoQueryError(error, "projects");
 
-  return Promise.all(((data as unknown) as ProjectRow[]).map(mapProjectRow));
+  return Promise.all(((data ?? []) as unknown as ProjectRow[]).map(mapProjectRow));
 }
 
 export async function getProjectById(id: string): Promise<Project | null> {
@@ -61,7 +60,9 @@ export async function getProjectById(id: string): Promise<Project | null> {
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (error || !data) {
+  assertNoQueryError(error, "project");
+
+  if (!data) {
     return null;
   }
 
@@ -101,11 +102,13 @@ async function getProjectFinancials(projectId: string) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("project_financial_summary")
     .select("total_income,total_expense,net_profit")
     .eq("project_id", projectId)
     .maybeSingle();
+
+  assertNoQueryError(error, "project financials");
 
   return {
     totalIncome: Number(data?.total_income ?? 0),

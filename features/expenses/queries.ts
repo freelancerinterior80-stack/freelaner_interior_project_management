@@ -1,6 +1,7 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireUser } from "@/lib/auth/guards";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { assertNoQueryError } from "@/lib/supabase/query-error";
 import { demoExpenses } from "@/features/expenses/demo-data";
 import type { Expense } from "@/features/expenses/types";
 
@@ -31,11 +32,9 @@ export async function getExpenses(): Promise<Expense[]> {
     .is("deleted_at", null)
     .order("expense_date", { ascending: false });
 
-  if (error || !data) {
-    return [];
-  }
+  assertNoQueryError(error, "expenses");
 
-  return ((data as unknown) as ExpenseRow[]).map((row) => ({
+  return ((data ?? []) as unknown as ExpenseRow[]).map((row) => ({
     id: row.id,
     projectId: row.project_id,
     projectName: row.projects?.name,

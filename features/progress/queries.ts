@@ -4,6 +4,7 @@ import type { ProgressFile, ProgressUpdate } from "@/features/progress/types";
 import { requireUser } from "@/lib/auth/guards";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { assertNoQueryError } from "@/lib/supabase/query-error";
 
 type ProgressRow = {
   id: string;
@@ -39,11 +40,9 @@ export async function getProgressUpdates(): Promise<ProgressUpdate[]> {
     .order("update_date", { ascending: false })
     .limit(30);
 
-  if (error || !data) {
-    return [];
-  }
+  assertNoQueryError(error, "progress updates");
 
-  return Promise.all(((data as unknown) as ProgressRow[]).map(mapProgressRow));
+  return Promise.all(((data ?? []) as unknown as ProgressRow[]).map(mapProgressRow));
 }
 
 export async function getProgressProjectOptions() {
@@ -67,7 +66,11 @@ async function mapProgressRow(row: ProgressRow): Promise<ProgressUpdate> {
 
 async function mapFileRow(row: ProgressRow["progress_files"][number]): Promise<ProgressFile> {
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.storage.from("project-files").createSignedUrl(row.storage_path, 60 * 60);
+  const { data, error } = await supabase.storage.from("project-files").createSignedUrl(row.storage_path, 60 * 60);
+
+  if (error) {
+    console.error(`[supabase] progress file signed URL (${row.storage_path}) failed:`, error);
+  }
 
   return {
     id: row.id,

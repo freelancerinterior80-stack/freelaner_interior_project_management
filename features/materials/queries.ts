@@ -1,6 +1,7 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireUser } from "@/lib/auth/guards";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { assertNoQueryError } from "@/lib/supabase/query-error";
 import { demoMaterialMovements, demoMaterials, demoSuppliers } from "@/features/materials/demo-data";
 import type { Material, MaterialMovement, Supplier } from "@/features/materials/types";
 
@@ -53,11 +54,9 @@ export async function getMaterials(): Promise<Material[]> {
     .is("deleted_at", null)
     .order("name");
 
-  if (error || !data) {
-    return [];
-  }
+  assertNoQueryError(error, "materials");
 
-  return ((data as unknown) as MaterialRow[]).map((row) => ({
+  return ((data ?? []) as unknown as MaterialRow[]).map((row) => ({
     id: row.id,
     supplierId: row.supplier_id,
     supplierName: row.suppliers?.name,
@@ -84,11 +83,9 @@ export async function getSuppliers(): Promise<Supplier[]> {
     .is("deleted_at", null)
     .order("name");
 
-  if (error || !data) {
-    return [];
-  }
+  assertNoQueryError(error, "suppliers");
 
-  return ((data as unknown) as SupplierRow[]).map((row) => ({
+  return ((data ?? []) as unknown as SupplierRow[]).map((row) => ({
     id: row.id,
     name: row.name,
     phone: row.phone,
@@ -112,11 +109,9 @@ export async function getMaterialMovements(): Promise<MaterialMovement[]> {
     .order("movement_date", { ascending: false })
     .limit(10);
 
-  if (error || !data) {
-    return [];
-  }
+  assertNoQueryError(error, "material movements");
 
-  return ((data as unknown) as MovementRow[]).map((row) => ({
+  return ((data ?? []) as unknown as MovementRow[]).map((row) => ({
     id: row.id,
     materialId: row.material_id,
     materialName: row.materials?.name,

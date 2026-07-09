@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/auth/guards";
 import { isSupabaseConfigured, supabaseUrl, supabaseServiceRoleKey } from "@/lib/supabase/config";
+import { assertNoQueryError } from "@/lib/supabase/query-error";
 import { demoSettings } from "@/features/settings/demo-data";
 import type { AppSettings } from "@/features/settings/types";
 
@@ -41,7 +42,10 @@ const fetchSettingsByOwnerId = unstable_cache(
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    const [{ data: settings }, { data: profile }] = await Promise.all([
+    const [
+      { data: settings, error: settingsError },
+      { data: profile, error: profileError }
+    ] = await Promise.all([
       admin
         .from("settings")
         .select(
@@ -52,6 +56,9 @@ const fetchSettingsByOwnerId = unstable_cache(
         .maybeSingle(),
       admin.from("profiles").select("preferred_language").eq("id", ownerId).maybeSingle()
     ]);
+
+    assertNoQueryError(settingsError, "settings");
+    assertNoQueryError(profileError, "profile");
 
     const lang: "en" | "ar" = profile?.preferred_language === "ar" ? "ar" : "en";
 
@@ -101,7 +108,10 @@ async function fetchSettingsFallback(userId: string, userEmail: string | null | 
   const { createSupabaseServerClient } = await import("@/lib/supabase/server");
   const supabase = await createSupabaseServerClient();
 
-  const [{ data: settings }, { data: profile }] = await Promise.all([
+  const [
+    { data: settings, error: settingsError },
+    { data: profile, error: profileError }
+  ] = await Promise.all([
     supabase
       .from("settings")
       .select(
@@ -112,6 +122,9 @@ async function fetchSettingsFallback(userId: string, userEmail: string | null | 
       .maybeSingle(),
     supabase.from("profiles").select("preferred_language").eq("id", userId).maybeSingle()
   ]);
+
+  assertNoQueryError(settingsError, "settings");
+  assertNoQueryError(profileError, "profile");
 
   const lang: "en" | "ar" = profile?.preferred_language === "ar" ? "ar" : "en";
   if (!settings) {
@@ -170,13 +183,19 @@ export const getSettings = cache(async (): Promise<AppSettings> => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getAdminSignedUrl(admin: SupabaseClient<any>, path: string): Promise<string | null> {
-  const { data } = await admin.storage.from("project-files").createSignedUrl(path, SIGNED_URL_TTL);
+  const { data, error } = await admin.storage.from("project-files").createSignedUrl(path, SIGNED_URL_TTL);
+  if (error) {
+    console.error(`[supabase] settings signed URL (${path}) failed:`, error);
+  }
   return data?.signedUrl ?? null;
 }
 
 async function getServerSignedUrl(path: string): Promise<string | null> {
   const { createSupabaseServerClient } = await import("@/lib/supabase/server");
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.storage.from("project-files").createSignedUrl(path, SIGNED_URL_TTL);
+  const { data, error } = await supabase.storage.from("project-files").createSignedUrl(path, SIGNED_URL_TTL);
+  if (error) {
+    console.error(`[supabase] settings signed URL (${path}) failed:`, error);
+  }
   return data?.signedUrl ?? null;
 }
